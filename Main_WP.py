@@ -71,7 +71,7 @@ class WaPORwidgiet(qtw.QWidget):
 #XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
     def LoadAPI(self):
         api_token_pickle=os.path.join(os.path.dirname(__file__),
-                                      'WaPOR/wapor_api_token.pickle')
+                                      'wapor_api_token.pickle')
         
       #attempts to load API toekn on start up
         try: 
@@ -91,7 +91,7 @@ class WaPORwidgiet(qtw.QWidget):
     def SaveAPI(self):    
             
         api_token_pickle=os.path.join(os.path.dirname(__file__),
-                                      'WaPOR/wapor_api_token.pickle')
+                                      'wapor_api_token.pickle')
         
         self.wapor_api_token=self.ui.plainTextEditAPI.toPlainText()
         if len(self.wapor_api_token)>0:
