@@ -24,6 +24,7 @@ import geopandas as gpd
 import gdal
 import osr
 import numpy as np
+import time
 
 
 
@@ -59,7 +60,7 @@ class WaPORwidgiet(qtw.QWidget):
         self.version=2 
         self.print_job=False
         self.path_query=r'https://io.apps.fao.org/gismgr/api/v1/query/'
-        self.ui.ButtonRefresh.clicked.connect(lambda: self.CheckInputs())
+        self.ui.ButtonDownload.clicked.connect(lambda: self.CheckInputs())
           
 
 
@@ -73,23 +74,19 @@ class WaPORwidgiet(qtw.QWidget):
                                       'WaPOR/wapor_api_token.pickle')
         
       #attempts to load API toekn on start up
-        try:
-            self.PrintStatus("Attempting to Load API Token") 
-            
+        try: 
             with open(api_token_pickle, 'rb') as handle:
                 self.wapor_api_token=pickle.load(handle)
-                self.PrintStatus("Obtained saved API Token")
                 ResponceStatus, ResponceMessage = self.CheckAccessToken()
                 if ResponceStatus == 200: 
                     self.ui.tabWidget.setTabEnabled(1, True)
                     self.PrepTab()
                     self.ui.LableLoad.setText("Token Loaded")
                 else:
-                    self.Mbox( 'Error' ,str(ResponceMessage),0)
+                    self.ui.LableLoad.setText("Failed to Load Token")
                    
         except:
-            self.PrintStatus("Failed to Load API Token")
-        pass
+            pass
         
     def SaveAPI(self):    
             
@@ -104,9 +101,9 @@ class WaPORwidgiet(qtw.QWidget):
                     self.ui.tabWidget.setTabEnabled(1, True)
                     with open(api_token_pickle, 'wb') as handle:
                         pickle.dump(self.wapor_api_token, handle, protocol=pickle.HIGHEST_PROTOCOL)
-                        self.PrintStatus("Saved API Token to "+ str(api_token_pickle))
                         self.PrepTab()
                         self.ui.tabWidget.setTabEnabled(1, True)
+                        self.ui.LableLoad.setText("Saved Token")
                 else:
                     self.Mbox( 'Error' ,str(ResponceMessage),0)
             
@@ -157,18 +154,15 @@ class WaPORwidgiet(qtw.QWidget):
             self.TreeAddBasic(L1, "Level 1")
             self.TreeAddBasic(L2, "Level 2")
             self.TreeAddLvl3(L3, "Level 3")
-            self.PrintStatus("Loaded Data Catalog from the WaPOR Server")
         except:
-            self.PrintStatus("Error Loading data from the WaPOR Server")
-            
-
-
+            self.Mbox( 'Error' ,'Error Loading data from the WaPOR Server',0)
+ 
 
 
     def TreeAddBasic(self, L, name):    
            
             parent = qtw.QTreeWidgetItem(self.ui.treeWidget)
-            
+
             parent.setText(0, name)        
             parent.setFlags(parent.flags()   | qtc.Qt.ItemFlag.ItemIsUserCheckable | qtc.Qt.ItemFlag.ItemIsAutoTristate)
             
@@ -227,14 +221,14 @@ class WaPORwidgiet(qtw.QWidget):
                     if request_json['status'] == 200:
                         self.cubedict[cubecode].update({'cubemeasure':(request_json['response'][0])})
                     else:
-                        print('\n ERROR:',request_json['message'])    
+                        self.Mbox( 'Error' ,str(request_json['message']),0)
 
 
                     request_json = (requests.get(r'https://io.apps.fao.org/gismgr/api/v1/catalog/workspaces/WAPOR_2/cubes/{0}/dimensions?overview=false&paged=false'.format(cubecode)).json())
                     if request_json['status'] == 200:
-                     self.cubedict[cubecode].update({'cubedimensions':(request_json['response'][0])})
+                        self.cubedict[cubecode].update({'cubedimensions':(request_json['response'][0])})
                     else:
-                     print('\n ERROR:',request_json['message']) 
+                        self.Mbox( 'Error' ,str(request_json['message']),0)
         
 
 
@@ -244,27 +238,19 @@ class WaPORwidgiet(qtw.QWidget):
             self.pop = Popup(item.text(1), self.MasterList)
             self.pop.show()
 
-
-    def PrintStatus(self, text):
-        self.ui.textStatus.append(text)
-        pass
-
-
-
     def CheckAccessToken(self):
         resp_vp=requests.post(self.path_sign_in,headers={'X-GISMGR-API-KEY':self.wapor_api_token})
         resp_vp = resp_vp.json()
         try:
             return resp_vp['status'], resp_vp['message']
         except:
-            self.Mbox( 'ERROR: Could not connect to server.',0)               
+            self.Mbox( 'Error','Could not connect to server.',0)               
             
     def GetTime(self):
         self.StartDateEdit = self.ui.dateStart.date().toPyDate().strftime("%Y-%m-%d")
         self.EndDateEdit = self.ui.dateEnd.date().toPyDate().strftime("%Y-%m-%d")
         
     def CheckInputs(self):
-        self.PrintStatus("Checking user inputs.")
         x = 0
         
         #check folder is valid folder
@@ -281,7 +267,7 @@ class WaPORwidgiet(qtw.QWidget):
         #Cant figure out out to get the writen text from the input without springing an error thus we'll just pull self.filename when loading the shape file later
         #bug needs to be fixed in the future, or make them not except straight user text.
         #check file is valid file
-        print(self.ui.plainTextEditShape.toPlainText())
+
         if os.path.isfile(self.ui.plainTextEditShape.toPlainText().encode('unicode_escape').decode()) == False:
             self.Mbox('Error', 'Invalid shape File, or pathway  Ensure that file extension is ".shp".', 0)
             x += 1
@@ -316,19 +302,17 @@ class WaPORwidgiet(qtw.QWidget):
             #Refresh accessscode
             #Sets off main request code chunk
             for n, cube_code in enumerate(self.SelectedCubeCodes, start=1):
-                self.PrintStatus("Starting download for  Wapor data {0}. Item number {1} of {2}".format(cube_code, n,  str(len(self.SelectedCubeCodes))))
+               # self.PrintStatus("Starting download for  Wapor data {0}. Item number {1} of {2}".format(cube_code, n,  str(len(self.SelectedCubeCodes))))
                 self.WaporRequest(cube_code, self.StartDateEdit, self.EndDateEdit,[miny, maxy], [minx, maxx] )
-
+            self.ui.labelStatus.setText("Status: Download Completed")
+            
         else:
-            self.PrintStatus("Error found in inputs, canceling WaPOR request.")
+            self.Mbox( 'Error:', 'Error found in inputs, canceling WaPOR request.',0)
             
             #NEED TO TEST THESE CONSTRAINS AND WRITE IN AN EXEPTION IF MANDITORY
       #  latlim -- [ymin, ymax] (values must be between -40.05 and 40.05)
       #  lonlim -- [xmin, xmax] (values must be between -30.05 and 65.05)
 
-#######################
-#CODE TAKEN
-#######################
     
     def query_accessToken(self):
             
@@ -342,18 +326,16 @@ class WaPORwidgiet(qtw.QWidget):
                 self.time_start=datetime.datetime.now().timestamp()
             except:
                 
-                self.Mbox( 'ERROR:', resp_vp['message'],0)
-                print()                      
+                self.Mbox( 'Error:', resp_vp['message'],0)
+                 
             return self.AccessToken
 
 
 
-#######################
-#CODE TAKEN END
-#######################
+
     def WaporRequest(self, cube_code, Startdate, Enddate, 
              latlim, lonlim):
-       
+        self.ui.labelStatus.setText("Status: Constructing WaPOR Request")
       
         """
         This function downloads seasonal WAPOR LCC data
@@ -377,9 +359,8 @@ class WaPORwidgiet(qtw.QWidget):
         try:
             df_avail=self.getAvailData(cube_code,time_range)
         except:
-            print('ERROR: cannot get list of available data')
+            self.Mbox( 'Error' ,'Cannot get list of available requested data',0)
             return None
-        #Need to figure out how to save this!!!!!!!!!!!!!!!!!!!XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
         savefolder = os.path.join(self.base_save_folder, cube_code)
         os.makedirs(savefolder)
             
@@ -405,19 +386,19 @@ class WaPORwidgiet(qtw.QWidget):
                                              row['time_code'],
                                              row['raster_id'],
                                              self.APIToken)
-
+            
 #check this works for seasonal and non seasonal
-            filename='{0}.tif'.format(row['raster_id'])
+            filename='{0}{1}.tif'.format(row['raster_id'],row['time_code'])
             outfilename=os.path.join(savefolder,filename)       
             download_file=os.path.join(savefolder,'raw_{0}.tif'.format(row['raster_id']))
         
             
             #Download raster file
+            self.ui.labelStatus.setText("Status: Downloading")
             resp=requests.get(download_url) 
+            self.ui.labelStatus.setText("Status: Correcting raster")
             open(download_file,'wb').write(resp.content) 
             driver, NDV, xsize, ysize, GeoT, Projection= self.GetGeoInfo(download_file)
-            print(driver)
-            print(NDV)
             Array = self.OpenAsArray(download_file,nan_values=True)
             CorrectedArray=Array*multiplier
             self.CreateGeoTiff(outfilename,CorrectedArray,
@@ -452,8 +433,6 @@ class WaPORwidgiet(qtw.QWidget):
         """
         SourceDS = gdal.Open(fh, gdal.GA_Update)
         Type = SourceDS.GetDriver().ShortName
-        print('type')
-        print(Type)
         if Type == 'HDF4' or Type == 'netCDF':
             SourceDS = gdal.Open(SourceDS.GetSubDatasets()[subdataset][0])
         NDV = SourceDS.GetRasterBand(1).GetNoDataValue()
@@ -550,26 +529,6 @@ class WaPORwidgiet(qtw.QWidget):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     def getAvailData(self,cube_code,time_range,
                      location=[],season=[],stage=[]):
         '''
@@ -589,10 +548,10 @@ class WaPORwidgiet(qtw.QWidget):
         try:
             measure_code=self.cubedict[cube_code]['cubemeasure']['code']
             dimensions=self.cubedict[cube_code]['cubedimensions']
-            print(dimensions)
         except:
-            print('ERROR: Cannot get cube info')
-        print('cube request setup')    
+            self.Mbox( 'Error' ,'Cannot get cube info',0)
+           
+       
         dims_ls=[]
         columns_codes=['MEASURES']
         rows_codes=[]
@@ -628,18 +587,16 @@ class WaPORwidgiet(qtw.QWidget):
                 dims_ls.append(what_dims)
                 rows_codes.append(dimensions['code']) 
                 
-            print('try request for cube')  
             df=self._query_availData(cube_code,measure_code,
                              dims_ls,columns_codes,rows_codes)
         except:
-            print('ERROR:failed request Cannot get list of available data')
+            self.Mbox( 'Error' ,'Failed request cannot get list of available data',0)
             return None
         
         keys=rows_codes+ ['raster_id','bbox','time_code']
         df_dict = { i : [] for i in keys }
         for irow,row in df.iterrows():
             for i in range(len(row)):
-                print(666)
                 if row[i]['type']=='ROW_HEADER':
                     key_info=row[i]['value']
                     df_dict[keys[i]].append(key_info)
@@ -670,7 +627,7 @@ class WaPORwidgiet(qtw.QWidget):
             avail_items=resp_vp['response']
             df=pd.DataFrame.from_dict(avail_items, orient='columns')            
         except:
-            print('\n ERROR: Cannot get dimensions Members. ',resp_vp['message'])
+            self.Mbox( 'Error' ,'Cannot get dimensions Members.'+str(resp_vp['message']),0)
         return df
 
 
@@ -704,24 +661,19 @@ class WaPORwidgiet(qtw.QWidget):
         try:
             results=resp_vp['response']['items']         
         except:
-            print('\n ERROR: Cannot get list of available data. ', resp_vp['message'])
+            self.Mbox( 'Error' ,'Cannot get list of available data.'+str(resp_vp['message']),0)
         return pd.DataFrame(results)
   
             
     def getCropRasterURL(self,bbox,cube_code,
                           time_code,rasterId,APIToken,season=None,stage=None):
-        '''
-        bbox: str
-            latitude and longitude
-            [xmin,ymin,xmax,ymax]
-        '''
-        print('getcroprasterURL')
+        self.ui.labelStatus.setText("Status: Readying Download")
         #Get AccessToken        
         AccessToken=self.AccessToken        
         self.time_now=datetime.datetime.now().timestamp()
         #print("\n Use Current AccessToken, start: {0}, elapsed time: {1}".format(self.time_start,self.time_now-self.time_start))            
-        if self.time_now-self.time_start > self.time_expire:
-            AccessToken=self._query_refreshToken(self.RefreshToken)
+#        if self.time_now-self.time_start > self.time_expire:
+ #           AccessToken=self._query_refreshToken(self.RefreshToken)
             #print("\n Refresh AccessToken")                
         #Create Polygon        
         xmin,ymin,xmax,ymax=bbox[0],bbox[1],bbox[2],bbox[3]
@@ -805,7 +757,8 @@ class WaPORwidgiet(qtw.QWidget):
             print('done download')
             return download_url     
         except:
-            print('Error: Cannot get cropped raster URL')
+            self.Mbox( 'Error' ,'Cannot get cropped raster URL',0)
+   
   
     
     def _query_jobOutput(self,job_url):
@@ -817,10 +770,11 @@ class WaPORwidgiet(qtw.QWidget):
      while contiue:        
          resp = requests.get(job_url)
          resp=resp.json()
+         print('test1')
          print(resp)
-         if self.print_job:
-             print(resp)
-         jobType=resp['response']['type']            
+         jobType=resp['response']['type'] 
+                
+
          if resp['response']['status']=='COMPLETED':
              contiue=False
              if jobType == 'CROP RASTER':
@@ -833,9 +787,10 @@ class WaPORwidgiet(qtw.QWidget):
              return output
          if resp['response']['status']=='COMPLETED WITH ERRORS':
              contiue=False
-             print(resp['response']['log'])             
-    
-  
+             print(resp['response']['log'])     
+         #Method keeps pinging the sever till the request is done. Short delay to minimize this.       
+         time.sleep(5)
+         self.ui.labelStatus.setText("Status: Waiting for WaPOR to finish request")
   
     
     
@@ -866,11 +821,6 @@ class Popup(qtw.QWidget):
                           
                           keyposition +=1
                   break         
-                  
-                    
-                  
-               
-
             self.setLayout(layout)
             
         
