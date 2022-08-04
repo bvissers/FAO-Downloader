@@ -199,10 +199,17 @@ class WaporDataToolDialog(QtWidgets.QDialog, FORM_CLASS):
 
 
     def get_bbox(self):
-        polygon_name = self.mMapLayerComboBox.currentLayer()
-        vector_extent = polygon_name.extent()
-        vector_location = polygon_name.dataProvider().dataSourceUri()
-        bbox = [vector_extent.xMinimum(),vector_extent.yMinimum(),vector_extent.xMaximum(),vector_extent.yMaximum()]
+        vector_layer = self.mMapLayerComboBox.currentLayer()
+        bounding=vector_layer.extent()        
+        if vector_layer.crs() != QgsCoordinateReferenceSystem("EPSG:4326"):
+            crsSrc = vector_layer.crs()    # WGS 84
+            crsDest = QgsCoordinateReferenceSystem("EPSG:4326")# WGS 84 / UTM zone 33N
+            transformContext = QgsProject.instance().transformContext()
+            xform = QgsCoordinateTransform(crsSrc, crsDest, transformContext)
+            bounding_t = xform.transformBoundingBox(bounding)
+            bounding = bounding_t
+            
+        bbox = [bounding.xMinimum(),bounding.yMinimum(),bounding.xMaximum(),bounding.yMaximum()]
         return bbox
 
 
