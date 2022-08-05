@@ -1,4 +1,7 @@
 waport_data/__pycache__/*
 __pycache__/*
+test_data/*
 waport_data/defdir.dll
 waport_data/token.dll
+waport_data/shp.dll
+waport_data/txtdir.dll

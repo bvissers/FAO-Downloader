@@ -39,11 +39,7 @@ import numpy as np
 import time
 from pathlib import Path
 #import geopandas as gpd
-from qgis.core import (
-    QgsProject,
-    QgsPathResolver,
-    QgsVectorLayer
-)
+from qgis.core import *
 from qgis.gui import QgsMapLayerComboBox
 
 
@@ -86,8 +82,20 @@ class WaporDataToolDialog(QtWidgets.QDialog, FORM_CLASS):
         self.btn_check_token.clicked.connect(self.validate_token)
         self.btn_browse_default_download_dir.clicked.connect(self.browse_default_directory)
         self.btn_set_download_location.clicked.connect(self.browse_download_directory)
-        self.btn_download.clicked.connect( self.LaunchDownload)
-        self.btn_cancel.clicked.connect(self.StopDownload)
+        self.btn_download.clicked.connect(self.LaunchDownload)
+
+        # analysis functions
+        self.btn_browse_txtinout.clicked.connect(self.browse_txtinout_directory)
+        self.btn_browse_src_shapefile.clicked.connect(self.browse_hru_shapefile)
+
+
+        # set sizes of items
+        self.btn_download.setFixedSize(141, 142)
+
+        self.pbar_primary.setFixedSize(0, 0)
+        self.pbar_secondary.setFixedSize(0, 0)
+
+
     
 
     def initialise_defaults(self):
@@ -110,6 +118,9 @@ class WaporDataToolDialog(QtWidgets.QDialog, FORM_CLASS):
         # set default variable states
         self.validate_token()
         self.check_default_download_dir()
+        self.check_txtinout_dir()
+        self.check_shp_fn()
+
 
         if self.token_is_valid:
             self.tab_pages.setCurrentIndex(0)
@@ -200,7 +211,8 @@ class WaporDataToolDialog(QtWidgets.QDialog, FORM_CLASS):
 
     def get_bbox(self):
         vector_layer = self.mMapLayerComboBox.currentLayer()
-        bounding=vector_layer.extent()        
+        bounding=vector_layer.extent()   
+        print(vector_layer.crs())     
         if vector_layer.crs() != QgsCoordinateReferenceSystem("EPSG:4326"):
             crsSrc = vector_layer.crs()    # WGS 84
             crsDest = QgsCoordinateReferenceSystem("EPSG:4326")# WGS 84 / UTM zone 33N
@@ -228,19 +240,81 @@ class WaporDataToolDialog(QtWidgets.QDialog, FORM_CLASS):
         self.worker.start()
         self.worker.UpdateStatus.connect(self.evt_UpdateStatusUI)
         self.worker.UpdateProgress.connect(self.UpdateProgressUI)
+        
+        # if download is in progress, let us cancel
+        # if not let us launch and we will change text in any case
+        if self.btn_download.text() == "Retrieve Data":
+            self.btn_download.setText("Cancel Download")
+            self.btn_download.clicked.disconnect(self.LaunchDownload)
+            self.btn_download.clicked.connect(self.StopDownload)
+
+            self.btn_download.setFixedSize(141, 101)
+            
+            self.pbar_primary.setFixedSize(141, 9)
+            self.pbar_secondary.setFixedSize(141, 21)
+
+            self.pbar_primary.setValue(0)
+            self.pbar_secondary.setValue(0)
+            
+
             
         
     def evt_UpdateStatusUI(self, text):
+        if text == "Status: Download Completed":
+            if self.btn_download.text() == "Cancel Download":
+                self.btn_download.setFixedSize(141, 142)
+
+                self.pbar_primary.setFixedSize(0, 0)
+                self.pbar_secondary.setFixedSize(0, 0)
+
+                self.btn_download.setText("Retrieve Data")
+                self.btn_download.clicked.disconnect(self.StopDownload)
+                self.btn_download.clicked.connect(self.LaunchDownload)
+
         self.labelStatus.setText(text)
     
     
     def UpdateProgressUI(self, text):
+
+        if len(text.split("\n")) == 3:
+            # we use try so that if FAO gives an update and this routine breaks, the plugin is still usable
+            try:
+                # update progress bar
+                base_parts = text.split("\n"); cpp = base_parts[1].split(' '); spp = base_parts[2].split(' ')
+
+                current_primary_progress = [int(cpp[2]), int(cpp[4])]
+                current_secondary_progress = [int(spp[2]), int(spp[4])]
+
+                print(current_primary_progress)
+                print(current_secondary_progress)
+
+                self.pbar_primary.setMaximum(current_primary_progress[1])
+                self.pbar_primary.setValue(current_primary_progress[0])
+
+                self.pbar_secondary.setMaximum(current_secondary_progress[1])
+                self.pbar_secondary.setValue(current_secondary_progress[0])
+
+            except: pass
+        
         self.labelProgress.setText(text)
         
         
     def StopDownload(self):
         self.worker.requestInterruption()
-        self.labelStatus.setText("Status: Canceling Download")               
+        self.labelStatus.setText("Status: Canceling Download")  
+
+        
+        if self.btn_download.text() == "Cancel Download":
+            self.btn_download.setFixedSize(141, 142)
+
+            self.pbar_primary.setFixedSize(0, 0)
+            self.pbar_secondary.setFixedSize(0, 0)
+
+            self.btn_download.setText("Retrieve Data")
+            self.btn_download.clicked.disconnect(self.StopDownload)
+            self.btn_download.clicked.connect(self.LaunchDownload)
+            
+                     
             
         
     def update_token(self):
@@ -307,12 +381,70 @@ class WaporDataToolDialog(QtWidgets.QDialog, FORM_CLASS):
             self.current_download_location = destDir
             
         
+        
+    def browse_txtinout_directory(self):
+        print('select txtinout directory...')
+
+        startingDir = "/"
+
+        
+        destDir = QFileDialog.getExistingDirectory(None, 
+                                                'Select TxtInOut Directory for SWAT+ model', 
+                                                startingDir, 
+                                                QFileDialog.ShowDirsOnly)
+
+        if len(destDir) > 0:
+            txtinout_fn = os.path.join(os.path.dirname(__file__), 'txtdir.dll')
+            self.write_to(txtinout_fn, destDir)
+            self.check_txtinout_dir()
+        
+        
+    def browse_hru_shapefile(self):
+        print('select shapefile...')
+
+        startingDir = "/"
+
+        destFN = QFileDialog.getOpenFileName(
+            None, 'Select HRU (hru2.shp) shapefile', startingDir, "Shapefile (*.shp)")
+        destFN = destFN[0]
+        if len(destFN) > 0:
+            hru_shp_fn = os.path.join(os.path.dirname(__file__), 'shp.dll')
+            self.write_to(hru_shp_fn, destFN)
+            self.check_shp_fn()
+
+            
+        
+    def check_shp_fn(self):
+        hru_shp_fn = os.path.join(os.path.dirname(__file__), 'shp.dll')
+        if self.exists(hru_shp_fn):
+            if len(self.read_from(hru_shp_fn)) > 0:
+                self.lnEdit_hru.setText(self.read_from(hru_shp_fn)[0])
+
+        
     def check_default_download_dir(self):
         default_dir_fn = os.path.join(os.path.dirname(__file__), 'defdir.dll')
         if self.exists(default_dir_fn):
             self.txt_default_dir_path.setPlainText(self.read_from(default_dir_fn)[0])
         else:
             self.txt_default_dir_path.setPlainText("")
+
+        
+    def check_txtinout_dir(self):
+        txtinout_fn = os.path.join(os.path.dirname(__file__), 'txtdir.dll')
+            
+        if self.exists(txtinout_fn):
+            txtinout_path = self.read_from(txtinout_fn)[0]
+            if self.exists(f"{txtinout_path}/file.cio"):
+                self.lnEdit_txtinout.setText(txtinout_path)
+                
+                # load hru shapefile if standard SWAT+ model
+                if self.exists(f"{txtinout_path}/../../../Watershed/Shapes/hrus2.shp"):
+                    self.lnEdit_hru.setText(os.path.abspath(f"{txtinout_path}/../../../Watershed/Shapes/hrus2.shp").replace("\\", "/"))
+            else:
+                self.lnEdit_txtinout.setText('Invalid TxtInOut Directory')
+                self.lnEdit_hru.setText("")
+        else:
+            self.lnEdit_txtinout.setText("")
 
 
     def write_to(self, filename, text_to_write):
