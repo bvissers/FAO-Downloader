@@ -298,31 +298,6 @@
        </widget>
       </widget>
      </widget>
-     <widget class="QPlainTextEdit" name="txb_download_location">
-      <property name="enabled">
-       <bool>true</bool>
-      </property>
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>120</y>
-        <width>271</width>
-        <height>26</height>
-       </rect>
-      </property>
-      <property name="toolTip">
-       <string extracomment="Where your data will be saved"/>
-      </property>
-      <property name="statusTip">
-       <string extracomment="Where your data will be saved"/>
-      </property>
-      <property name="inputMethodHints">
-       <set>Qt::ImhNone</set>
-      </property>
-      <property name="lineWrapMode">
-       <enum>QPlainTextEdit::WidgetWidth</enum>
-      </property>
-     </widget>
      <widget class="QPushButton" name="btn_set_download_location">
       <property name="geometry">
        <rect>
@@ -352,6 +327,16 @@
       </property>
       <property name="text">
        <string>Download Directory</string>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="txb_download_location">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>120</y>
+        <width>271</width>
+        <height>24</height>
+       </rect>
       </property>
      </widget>
     </widget>
@@ -617,13 +602,13 @@
          <x>10</x>
          <y>135</y>
          <width>487</width>
-         <height>171</height>
+         <height>221</height>
         </rect>
        </property>
        <property name="title">
         <string>Analysis Details</string>
        </property>
-       <widget class="QComboBox" name="comboBox">
+       <widget class="QComboBox" name="cbx_analysis_swat_var">
         <property name="geometry">
          <rect>
           <x>150</x>
@@ -679,7 +664,7 @@
          <string>Timestep</string>
         </property>
        </widget>
-       <widget class="QComboBox" name="comboBox_2">
+       <widget class="QComboBox" name="cbx_analysis_swat_ts">
         <property name="geometry">
          <rect>
           <x>150</x>
@@ -785,6 +770,64 @@
           </property>
          </widget>
         </widget>
+       </widget>
+       <widget class="QComboBox" name="cbb_download_batch_swat">
+        <property name="geometry">
+         <rect>
+          <x>148</x>
+          <y>160</y>
+          <width>281</width>
+          <height>22</height>
+         </rect>
+        </property>
+       </widget>
+       <widget class="QLabel" name="label_13">
+        <property name="geometry">
+         <rect>
+          <x>30</x>
+          <y>160</y>
+          <width>91</width>
+          <height>16</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Download Batch</string>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="btn_refresh_dwnl_batch_swat">
+        <property name="geometry">
+         <rect>
+          <x>440</x>
+          <y>160</y>
+          <width>31</width>
+          <height>23</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string/>
+        </property>
+        <property name="icon">
+         <iconset>
+          <normaloff>refresh.png</normaloff>refresh.png</iconset>
+        </property>
+       </widget>
+       <widget class="QLabel" name="label_14">
+        <property name="geometry">
+         <rect>
+          <x>150</x>
+          <y>180</y>
+          <width>281</width>
+          <height>16</height>
+         </rect>
+        </property>
+        <property name="font">
+         <font>
+          <pointsize>8</pointsize>
+         </font>
+        </property>
+        <property name="text">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; color:#818181;&quot;&gt;You can change parent directory in 'Data Extraction'&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
        </widget>
       </widget>
       <widget class="QPushButton" name="btn_analysis_swat_start">
@@ -912,22 +955,6 @@
      <property name="title">
       <string>Defaults</string>
      </property>
-     <widget class="QPlainTextEdit" name="txt_default_dir_path">
-      <property name="enabled">
-       <bool>true</bool>
-      </property>
-      <property name="geometry">
-       <rect>
-        <x>30</x>
-        <y>60</y>
-        <width>401</width>
-        <height>31</height>
-       </rect>
-      </property>
-      <property name="lineWrapMode">
-       <enum>QPlainTextEdit::WidgetWidth</enum>
-      </property>
-     </widget>
      <widget class="QPushButton" name="btn_browse_default_download_dir">
       <property name="geometry">
        <rect>
@@ -952,6 +979,16 @@
       </property>
       <property name="text">
        <string>Default Download Directory</string>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="txt_default_dir_path">
+      <property name="geometry">
+       <rect>
+        <x>30</x>
+        <y>60</y>
+        <width>401</width>
+        <height>31</height>
+       </rect>
       </property>
      </widget>
     </widget>

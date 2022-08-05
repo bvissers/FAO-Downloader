@@ -21,28 +21,23 @@
  ***************************************************************************/
 """
 
+import ctypes
 import datetime
 import os
+import time
+from pathlib import Path
 
+import numpy as np
+import pandas as pd
 import requests
+from osgeo import gdal, ogr, osr
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
-from qgis.PyQt import QtWidgets, uic
-
-import ctypes
-import pandas as pd
-from osgeo import gdal
-from osgeo import osr
-from osgeo import ogr
-import numpy as np
-import time
-from pathlib import Path
-#import geopandas as gpd
 from qgis.core import *
 from qgis.gui import QgsMapLayerComboBox
-
-
+from qgis.PyQt import QtWidgets, uic
+from qgis.utils import iface
 
 # This loads your .ui file so that PyQt can populate your plugin with the elements from Qt Designer
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
@@ -70,6 +65,9 @@ class WaporDataToolDialog(QtWidgets.QDialog, FORM_CLASS):
         self.time_expire = None
         self.time_start = None
 
+        self.pixel_size = 250
+        self.NoData_value = -9999
+
         self.current_download_location = None
 
         # set initial states
@@ -87,6 +85,8 @@ class WaporDataToolDialog(QtWidgets.QDialog, FORM_CLASS):
         # analysis functions
         self.btn_browse_txtinout.clicked.connect(self.browse_txtinout_directory)
         self.btn_browse_src_shapefile.clicked.connect(self.browse_hru_shapefile)
+        self.btn_analysis_swat_start.clicked.connect(self.analyse_swat)
+        self.btn_refresh_dwnl_batch_swat.clicked.connect(self.refresh_swat_wapor_datasets)
 
 
         # set sizes of items
@@ -96,10 +96,16 @@ class WaporDataToolDialog(QtWidgets.QDialog, FORM_CLASS):
         self.pbar_secondary.setFixedSize(0, 0)
 
 
+    # to store swat constants
+    class swat_analysis_var_constants:
+        def __init__(self, variable, file_prefix, column_index):
+            self.variable = variable
+            self.file_prefix = file_prefix
+            self.column_index = column_index
     
 
     def initialise_defaults(self):
-        
+
         self.txt_default_dir_path.setReadOnly(True)
         self.txb_download_location.setReadOnly(True) 
         # get current date and time and set default time range
@@ -121,6 +127,18 @@ class WaporDataToolDialog(QtWidgets.QDialog, FORM_CLASS):
         self.check_txtinout_dir()
         self.check_shp_fn()
 
+        # initialise swat analysis defaults
+        self.analysis_constants = {}
+        self.analysis_constants["swat"] = {}
+        self.analysis_constants["swat"]['extraction'] = {}
+        self.analysis_constants["swat"]['extraction']['Evapotranspiration'] = self.swat_analysis_var_constants('ET', 'hru_wb_', 14)
+        
+        self.analysis_constants["swat"]['suffixes'] = {}
+        self.analysis_constants["swat"]['suffixes']['Annual Average'] = 'aa'
+        self.analysis_constants["swat"]['suffixes']['Annual'] = 'yr'
+        self.analysis_constants["swat"]['suffixes']['Decadal (Average)'] = 'day'
+        self.analysis_constants["swat"]['suffixes']['Decadal (Cummulative)'] = 'day'
+
 
         if self.token_is_valid:
             self.tab_pages.setCurrentIndex(0)
@@ -130,16 +148,203 @@ class WaporDataToolDialog(QtWidgets.QDialog, FORM_CLASS):
         default_dir_fn = os.path.join(os.path.dirname(__file__), 'defdir.dll')
         if self.exists(default_dir_fn):
             dld_location = self.read_from(default_dir_fn)[0]
-            self.txt_default_dir_path.setPlainText(dld_location)
-            self.txb_download_location.setPlainText(dld_location)
+            self.txt_default_dir_path.setText(dld_location)
+            self.txb_download_location.setText(dld_location)
             self.current_download_location = dld_location
         else:
-            self.txt_default_dir_path.setPlainText("")
-            self.txb_download_location.setPlainText("")
+            self.txt_default_dir_path.setText("")
+            self.txb_download_location.setText("")
             self.current_download_location = None
 
         self.treeWidget.clear()
         self.treeWidget.headerItem().setText(0, '')
+
+
+    # analysis methods
+    
+    def analyse_swat(self):
+
+        # set up ui
+        root = QgsProject.instance().layerTreeRoot()
+        waporTkGroup = root.findGroup("Wapor Tolkit")
+        
+        if waporTkGroup is None:
+            waporTkGroup = root.insertGroup(0, "Wapor Tolkit")
+
+        swat_analysis = waporTkGroup.findGroup("SWAT+ Analysis")
+
+        if swat_analysis is None:
+            swat_analysis = waporTkGroup.insertGroup(0, "SWAT+ Analysis")
+        
+        hru_layer = self.get_layer("HRU Shapefile", "SWAT+ Analysis")
+
+        if hru_layer is None:
+            vlayer = QgsVectorLayer(self.lnEdit_hru.text(), 'HRU Shapefile', 'ogr')
+            QgsProject.instance().addMapLayer(vlayer)
+            root = QgsProject.instance().layerTreeRoot()
+            layer = root.findLayer(vlayer.id())
+            hru_layer = layer.clone()
+            swat_analysis.insertChildNode(0, hru_layer)
+            root.removeChildNode(layer)
+
+        hru_layer = self.get_layer("HRU Shapefile", "SWAT+ Analysis")
+
+        # check capability to add field and add if possible
+        capabilities = hru_layer.dataProvider().capabilities()
+        if capabilities & QgsVectorDataProvider.AddAttributes:
+            # check if field exists before adding
+            field_index = hru_layer.fields().indexFromName('VarValue')
+
+            if field_index == -1:
+                res = hru_layer.dataProvider().addAttributes([QgsField('VarValue', QVariant.Double)])
+                hru_layer.updateFields()
+                print(f"The field 'VarValue' has been added to layer {hru_layer.name()}!")
+            else: 
+                print(f"The field 'VarValue' exists in layer {hru_layer.name()}!")
+        else:
+            print("HRU Shapefile is not editable!")
+
+        # edit layer by filling with corresponding variable values
+
+        # get values in dictionary form
+        # read file
+
+        fn_prefix = self.analysis_constants['swat']['extraction'][self.cbx_analysis_swat_var.currentText()].file_prefix
+        c_index = self.analysis_constants['swat']['extraction'][self.cbx_analysis_swat_var.currentText()].column_index
+        fn_suffix = self.analysis_constants["swat"]['suffixes'][self.cbx_analysis_swat_ts.currentText()]
+
+        read_fn = f"{self.lnEdit_txtinout.text()}/{fn_prefix}{fn_suffix}.txt"
+
+        if self.exists(read_fn):
+            hru_fc = self.read_from(read_fn)
+            if len(hru_fc) < 5:
+                
+                # here, tell user to run at specified timestep in SWAT+ again to get
+                # results making sure output for the variable and timestep is activated
+                return
+            
+            hru_var_values = {}
+
+            for line in hru_fc[3:]:
+                line = line.split(" ")
+                line = [element for element in line if not element == ""]
+                year = line[3]
+
+                if not year in hru_var_values:
+                    hru_var_values[year] = {}
+
+                hru_var_values[year][int(line[4])] = float(line[c_index])
+
+            # add to shapefile to make raster files
+            if fn_suffix == 'aa':
+                    
+                hru_layer.startEditing()
+
+                hru_layer_features = hru_layer.getFeatures()
+
+                for feature in hru_layer_features:
+                    feature["VarValue"] = hru_var_values[year][int(feature["HRUS"])]
+                    print(feature["VarValue"])
+                    hru_layer.updateFeature(feature)
+
+                hru_layer.commitChanges()
+                iface.vectorLayerTools().stopEditing(hru_layer)
+
+                # rasterise the layer
+
+                self.create_path(f"{self.txb_download_location.text()}/swat-plus/")
+                self.rasterise_layer(
+                    self.lnEdit_hru.text(),
+                    f"{self.txb_download_location.text()}/swat-plus/{fn_suffix}_{self.analysis_constants['swat']['extraction'][self.cbx_analysis_swat_var.currentText()].variable}.tif",
+                    'VarValue')
+
+                # next retrieve file with et data from wapor for comparison
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    def rasterise_layer(self, vector_fn, raster_fn, field_name, pixel_size = None, NoData_value = None):
+        
+        if pixel_size is None:
+            pixel_size = self.pixel_size
+            
+        if NoData_value is None:
+            NoData_value = self.NoData_value
+
+        # Open the data source and read in the extent
+        source_ds = ogr.Open(vector_fn)
+        source_layer = source_ds.GetLayer()
+        x_min, x_max, y_min, y_max = source_layer.GetExtent()
+
+        # Create the destination data source
+        x_res = int((x_max - x_min) / pixel_size)
+        y_res = int((y_max - y_min) / pixel_size)
+        target_ds = gdal.GetDriverByName('GTiff').Create(raster_fn, x_res, y_res, 1, gdal.GDT_Float32)
+        target_ds.SetGeoTransform((x_min, pixel_size, 0, y_max, 0, -pixel_size))
+        band = target_ds.GetRasterBand(1)
+        band.SetNoDataValue(NoData_value)
+
+        # Rasterize
+        OPTIONS = [f'ATTRIBUTE={field_name}']
+        gdal.RasterizeLayer(target_ds, [1], source_layer, burn_values=[0], options=OPTIONS)
+        return True
+
+
+    def create_path(self, path_name):
+
+        if not os.path.isdir(path_name):
+            os.makedirs(path_name)
+                   
+        return path_name
+
+
+    def refresh_swat_wapor_datasets(self):
+        directories = os.listdir(self.txb_download_location.text())
+        self.cbb_download_batch_swat.clear()
+
+        for dir_name in directories:
+            if 'WaPOR Download' in dir_name:
+                self.cbb_download_batch_swat.addItem(dir_name)
+
+
+    def get_layer(self, layer_name, group_name):
+        root = QgsProject.instance().layerTreeRoot()
+        group = root.findGroup(group_name)
+        selected_layer = None
+        if group is not None:
+            for child in group.children():
+                if child.name() == layer_name:
+                    iface.setActiveLayer(child.layer())
+                    selected_layer = child.layer()
+
+        return selected_layer
+                
 
 
     def load_catalog(self):
@@ -313,9 +518,6 @@ class WaporDataToolDialog(QtWidgets.QDialog, FORM_CLASS):
             self.btn_download.setText("Retrieve Data")
             self.btn_download.clicked.disconnect(self.StopDownload)
             self.btn_download.clicked.connect(self.LaunchDownload)
-            
-                     
-            
         
     def update_token(self):
         print('updating token...')
@@ -351,7 +553,6 @@ class WaporDataToolDialog(QtWidgets.QDialog, FORM_CLASS):
             self.lbl_token_status.setText("Can't Validate Token")
             print( 'Error','Could not connect to server.',0)  
 
-
     def browse_default_directory(self):
         print('select default directory...')
 
@@ -377,7 +578,7 @@ class WaporDataToolDialog(QtWidgets.QDialog, FORM_CLASS):
                                                     QFileDialog.ShowDirsOnly)
 
         if len(destDir) > 0:
-            self.txb_download_location.setPlainText(destDir)
+            self.txb_download_location.setText(destDir)
             self.current_download_location = destDir
             
         
@@ -424,9 +625,9 @@ class WaporDataToolDialog(QtWidgets.QDialog, FORM_CLASS):
     def check_default_download_dir(self):
         default_dir_fn = os.path.join(os.path.dirname(__file__), 'defdir.dll')
         if self.exists(default_dir_fn):
-            self.txt_default_dir_path.setPlainText(self.read_from(default_dir_fn)[0])
+            self.txt_default_dir_path.setText(self.read_from(default_dir_fn)[0])
         else:
-            self.txt_default_dir_path.setPlainText("")
+            self.txt_default_dir_path.setText("")
 
         
     def check_txtinout_dir(self):
