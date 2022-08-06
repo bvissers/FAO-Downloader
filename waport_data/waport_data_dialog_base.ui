@@ -700,6 +700,9 @@
         </item>
        </widget>
        <widget class="QScrollArea" name="scrollArea_2">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
         <property name="geometry">
          <rect>
           <x>150</x>

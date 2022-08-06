@@ -127,6 +127,7 @@ class WaporDataToolDialog(QtWidgets.QDialog, FORM_CLASS):
         self.check_txtinout_dir()
         self.check_shp_fn()
 
+
         # initialise swat analysis defaults
         self.analysis_constants = {}
         self.analysis_constants["swat"] = {}
@@ -159,6 +160,9 @@ class WaporDataToolDialog(QtWidgets.QDialog, FORM_CLASS):
         self.treeWidget.clear()
         self.treeWidget.headerItem().setText(0, '')
 
+        try: self.refresh_swat_wapor_datasets()
+        except: pass
+
 
     # analysis methods
     
@@ -180,12 +184,7 @@ class WaporDataToolDialog(QtWidgets.QDialog, FORM_CLASS):
 
         if hru_layer is None:
             vlayer = QgsVectorLayer(self.lnEdit_hru.text(), 'HRU Shapefile', 'ogr')
-            QgsProject.instance().addMapLayer(vlayer)
-            root = QgsProject.instance().layerTreeRoot()
-            layer = root.findLayer(vlayer.id())
-            hru_layer = layer.clone()
-            swat_analysis.insertChildNode(0, hru_layer)
-            root.removeChildNode(layer)
+            self.loadLayerToGroup(vlayer, 'SWAT+ Analysis')
 
         hru_layer = self.get_layer("HRU Shapefile", "SWAT+ Analysis")
 
@@ -253,12 +252,44 @@ class WaporDataToolDialog(QtWidgets.QDialog, FORM_CLASS):
                 # rasterise the layer
 
                 self.create_path(f"{self.txb_download_location.text()}/swat-plus/")
-                self.rasterise_layer(
+                rasterised = self.rasterise_layer(
                     self.lnEdit_hru.text(),
                     f"{self.txb_download_location.text()}/swat-plus/{fn_suffix}_{self.analysis_constants['swat']['extraction'][self.cbx_analysis_swat_var.currentText()].variable}.tif",
                     'VarValue')
 
-                # next retrieve file with et data from wapor for comparison
+                # add it to canvas
+                if rasterised:
+                    swat_rasters = swat_analysis.findGroup("Raster Layers")
+                    if swat_rasters is None:
+                        swat_rasters = swat_analysis.insertGroup(0, "Raster Layers")
+
+                    aa_rasters = swat_rasters.findGroup("Annual Average")
+                    if aa_rasters is None:
+                        aa_rasters = swat_rasters.insertGroup(0, "Annual Average")
+
+                    # rasterised_aa_layer = self.get_layer(
+                    #         f"Annual average {self.analysis_constants['swat']['extraction'][self.cbx_analysis_swat_var.currentText()].variable}",
+                    #         "Raster Layers"
+                    #     )
+                    
+                    self.removeLayers(f"SWAT+ {fn_suffix} {self.analysis_constants['swat']['extraction'][self.cbx_analysis_swat_var.currentText()].variable}")
+
+                    rlayer = QgsRasterLayer(
+                        f"{self.txb_download_location.text()}/swat-plus/{fn_suffix}_{self.analysis_constants['swat']['extraction'][self.cbx_analysis_swat_var.currentText()].variable}.tif",
+                        f"SWAT+ {fn_suffix} {self.analysis_constants['swat']['extraction'][self.cbx_analysis_swat_var.currentText()].variable}", 'gdal')
+
+                    self.loadLayerToGroup(rlayer, 'Annual Average')
+                    
+                    # process annual average for WaPOR side
+
+                    # check the WaPOR raster if it exists
+                    # this is a temorary check for mechanism only
+                    if self.exists(f"{self.txb_download_location.text()}/{self.cbb_download_batch_swat.currentText()}/L1_AETI_A/L1_AETI_09[2009-01-01,2010-01-01).tif"):
+                        rlayer = QgsRasterLayer(
+                            f"{self.txb_download_location.text()}/{self.cbb_download_batch_swat.currentText()}/L1_AETI_A/L1_AETI_09[2009-01-01,2010-01-01).tif",
+                            f"WaPOR {fn_suffix} AET", 'gdal')
+                        
+                        self.loadLayerToGroup(rlayer, 'Annual Average')
 
 
 
@@ -280,11 +311,17 @@ class WaporDataToolDialog(QtWidgets.QDialog, FORM_CLASS):
 
 
 
+    def loadLayerToGroup(self, layer, group_name):
+        QgsProject.instance().addMapLayer(layer, False)
+        root = QgsProject.instance().layerTreeRoot()
+        g = root.findGroup(group_name)
+        g.insertChildNode(0, QgsLayerTreeLayer(layer))
 
 
-
-
-
+    def removeLayers(self, layerName):
+        for layer in QgsProject.instance().mapLayers().values():
+            if layer.name()==layerName:
+                QgsProject.instance().removeMapLayers( [layer.id()] )
 
 
 
@@ -307,6 +344,8 @@ class WaporDataToolDialog(QtWidgets.QDialog, FORM_CLASS):
         y_res = int((y_max - y_min) / pixel_size)
         target_ds = gdal.GetDriverByName('GTiff').Create(raster_fn, x_res, y_res, 1, gdal.GDT_Float32)
         target_ds.SetGeoTransform((x_min, pixel_size, 0, y_max, 0, -pixel_size))
+        print(dir(source_layer))
+        target_ds.SetProjection(source_layer.GetSpatialRef().ExportToWkt())
         band = target_ds.GetRasterBand(1)
         band.SetNoDataValue(NoData_value)
 
