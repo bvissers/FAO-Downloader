@@ -283,6 +283,32 @@ class WaporDataToolDialog(QtWidgets.QDialog, FORM_CLASS):
                     # process annual average for WaPOR side
 
                     # check the WaPOR raster if it exists
+                    
+                    # Dictionaries to turn cbb selections to cubecode strings
+                    # Dic_type = {'Evaporation' : 'E', 'Evaporation' : 'T',
+                    #        'Precipitation' : 'PCP', 'Evapotranspiration' : 'AETI'}
+                    # Dic_time = {'Annual Average' : 'A', 'Annual' : 'A', 'Monthly' : 'M',
+                    #        'Decadal (Average)' : 'D', 'Decadal (Cumulative)' : 'D_C'}
+
+                    # NEED TO ADD MAKE self.cbx_analysis_lvl.currentText() for L1, L2, L3
+                    # level = self.cbx_analysis_lvl.currentText()
+                    # rootdir = self.cbb_download_batch_swat.currentText()
+                    # parameter = (Dic_type[self.cbx_analysis_swat_var.currentText()] + '_' +
+                    #                       Dic_time[self.cbx_analysis_swat_ts.currentText()])
+
+
+                    # for folder in os.listdir(rootdir):
+                    #     if level in folder and parameter in folder:
+                    #         Gives full file extention of where the rasterfiles are located
+                            
+                    #         print(os.path.join(rootdir , folder))
+                    #         could return a True statment
+                    #         return True
+
+                    
+                    
+                    
+                    
                     # this is a temorary check for mechanism only
                     if self.exists(f"{self.txb_download_location.text()}/{self.cbb_download_batch_swat.currentText()}/L1_AETI_A/L1_AETI_09[2009-01-01,2010-01-01).tif"):
                         rlayer = QgsRasterLayer(
