@@ -87,13 +87,18 @@ class WaporDataToolDialog(QtWidgets.QDialog, FORM_CLASS):
         self.btn_browse_src_shapefile.clicked.connect(self.browse_hru_shapefile)
         self.btn_analysis_swat_start.clicked.connect(self.analyse_swat)
         self.btn_refresh_dwnl_batch_swat.clicked.connect(self.refresh_swat_wapor_datasets)
-
+        self.btn_analysis_swat_report.clicked.connect(self.createSWATReport)
 
         # set sizes of items
         self.btn_download.setFixedSize(141, 142)
 
         self.pbar_primary.setFixedSize(0, 0)
         self.pbar_secondary.setFixedSize(0, 0)
+
+        # attributes for report creation
+        self.layout = None
+        self.manager = None
+        self.project = None
 
 
     # to store swat constants
@@ -324,7 +329,175 @@ class WaporDataToolDialog(QtWidgets.QDialog, FORM_CLASS):
                         
                         self.loadLayerToGroup(rlayer, 'Annual Average')
                     
-                    
+    def createSWATReport(self):
+        print('creating report')
+        # prepare a blank layout
+        fn_suffix   = self.analysis_constants["swat"]['suffixes'][self.cbx_analysis_swat_ts.currentText()]
+        var_name    = self.analysis_constants['swat']['extraction'][self.cbx_analysis_swat_var.currentText()].variable
+
+        self.project = QgsProject.instance()         
+        self.manager = self.project.layoutManager()
+
+        # incase the layout already exists
+        layoutName = f"SWAT+ {fn_suffix} {var_name} Report"
+
+        layouts_list = self.manager.printLayouts()
+        for layout in layouts_list:
+            if layout.name() == layoutName:
+                self.manager.removeLayout(layout)
+
+        self.layout = None
+        self.layout = QgsPrintLayout(self.project)        
+
+        self.layout.initializeDefaults()  
+        
+        self.layout.setName(layoutName)
+        self.manager.addLayout(self.layout)
+
+        # populate the layout
+                                          
+
+        #defines map extent using map coordinates
+        # SWAT Layer first
+
+        current_layer = None
+        for tmp_layer in QgsProject.instance().mapLayers().values():
+            if tmp_layer.name() == 'WaPOR aa AET':
+                current_layer = tmp_layer
+        
+        layout_map_extents = self.transformExtents(current_layer.extent(), current_layer.crs())
+
+        swat_map = QgsLayoutItemMap(self.layout)
+        swat_map.setRect(20, 20, 20, 20)   
+
+        swat_map.setLayers([QgsProject.instance().mapLayersByName('SWAT+ aa ET')[0]])
+        swat_map.storeCurrentLayerStyles()
+        swat_map.setExtent(layout_map_extents)
+        self.layout.addLayoutItem(swat_map)
+        
+        #Move & Resize map on print layout canvas
+        swat_map.attemptMove(QgsLayoutPoint(30, 30, QgsUnitTypes.LayoutMillimeters))
+        swat_map.attemptResize(QgsLayoutSize(80, 80, QgsUnitTypes.LayoutMillimeters))
+
+        # Wapor Layer now
+        wapor_map = QgsLayoutItemMap(self.layout)
+        wapor_map.setRect(20, 20, 20, 20)
+
+        wapor_map.setLayers([QgsProject.instance().mapLayersByName('WaPOR aa AET')[0]])
+        wapor_map.storeCurrentLayerStyles()
+        wapor_map.setExtent(layout_map_extents)
+        self.layout.addLayoutItem(wapor_map)
+
+        #Move & Resize map on print layout canvas
+        wapor_map.attemptMove(QgsLayoutPoint(115, 30, QgsUnitTypes.LayoutMillimeters))
+        wapor_map.attemptResize(QgsLayoutSize(80, 80, QgsUnitTypes.LayoutMillimeters))
+
+        # style layers
+        raster_layers_aa_ET = [
+            QgsProject.instance().mapLayersByName('SWAT+ aa ET')[0],
+            QgsProject.instance().mapLayersByName('WaPOR aa AET')[0],
+        ]
+
+        style_fn = os.path.join(os.path.dirname(__file__), 'et_style.qml')
+
+        for rast_lyr in raster_layers_aa_ET:
+            rast_lyr.loadNamedStyle(style_fn)
+            iface.layerTreeView().refreshLayerSymbology(rast_lyr.id())
+            rast_lyr.triggerRepaint()
+
+        # add difference map here (awaits brenden)
+
+
+        # add legends
+
+        legend = QgsLayoutItemLegend(self.layout)
+        legend.setTitle("Legend")
+
+        wapor_layer = QgsProject.instance().layerTreeRoot().findLayer(current_layer.id())
+
+        layersToAdd = [layer for layer in QgsProject().instance().mapLayers().values() if layer.name() == 'WaPOR aa AET']
+
+        root = QgsLayerTree()
+
+        for layer in layersToAdd:
+            #add layer objects to the layer tree
+            root.addLayer(layer)
+
+        legend.model().setRootGroup(root)
+        self.layout.addLayoutItem(legend)
+        legend.attemptMove(QgsLayoutPoint(40, 110, QgsUnitTypes.LayoutMillimeters))
+        
+        # add text
+        title = QgsLayoutItemLabel(self.layout)
+        title.setText("Annual Average ET Report")
+        title.setFont(QFont("Arial", 24))
+        title.adjustSizeToText()
+        self.layout.addLayoutItem(title)
+        title.attemptMove(QgsLayoutPoint(10, 10, QgsUnitTypes.LayoutMillimeters))
+        title.attemptResize(QgsLayoutSize(1100, 80, QgsUnitTypes.LayoutMillimeters))
+
+        subtitle = QgsLayoutItemLabel(self.layout)
+        subtitle.setText("SWAT+ ET vs WaPOR Actual ET and Interception")
+        subtitle.setFont(QFont("Arial", 16))
+        subtitle.adjustSizeToText()
+        self.layout.addLayoutItem(subtitle)
+        subtitle.attemptMove(QgsLayoutPoint(10, 20, QgsUnitTypes.LayoutMillimeters)) 
+        
+        comparison_details = QgsLayoutItemLabel(self.layout)
+        comparison_details.setText("Comparison Details")
+        comparison_details.setFont(QFont("Arial", 16))
+        comparison_details.adjustSizeToText()
+        self.layout.addLayoutItem(comparison_details)
+        comparison_details.attemptMove(QgsLayoutPoint(100, 110, QgsUnitTypes.LayoutMillimeters)) 
+        comparison_details.attemptResize(QgsLayoutSize(1100, 80, QgsUnitTypes.LayoutMillimeters))
+
+
+
+
+
+
+
+
+
+
+
+        # now we save where the user wants to save the output pdf file, commented out image file
+        save_report_fn = QFileDialog.getSaveFileName(None, 'Select HRU (hru2.shp) shapefile', '/', "PDF File (*.pdf)")
+        if (not save_report_fn is None):
+            if (len(save_report_fn[0]) > 4):
+                self.exportLayout(f"SWAT+ {fn_suffix} {var_name} Report", save_report_fn[0], self.manager)
+        return True
+
+
+    def transformExtents(self, extentObject, src_crs, dest_crs_EPSG = '4326'):
+        dst_crs = QgsCoordinateReferenceSystem(f"EPSG:{dest_crs_EPSG}")
+        transform_context = QgsProject.instance().transformContext()
+        transformer = QgsCoordinateTransform(src_crs, dst_crs, transform_context)
+        return transformer.transformBoundingBox(extentObject)
+
+
+    def layer_visibility(self, layerName, visible = False, includes_parent = False):
+        prj = QgsProject.instance()
+        layer = prj.mapLayersByName(layerName)[0]
+        if includes_parent:
+            prj.layerTreeRoot().findLayer(layer.id()).setItemVisibilityChecked(visible)
+        else:
+            prj.layerTreeRoot().findLayer(layer.id()).setItemVisibilityCheckedParentRecursive(visible)
+
+
+
+    def exportLayout(self, layoutName, fileOut, exportManager):
+
+        #this accesses a specific layout, by name (which is a string)
+        layout = exportManager.layoutByName(layoutName)
+        
+        #this creates a QgsLayoutExporter object and this exports a pdf of the layout object
+        exporter = QgsLayoutExporter(layout)                
+        exporter.exportToPdf(fileOut, QgsLayoutExporter.PdfExportSettings())  
+
+        #this exports an image of the layout object but is currently deactivated
+        #exporter.exportToImage('/Users/ep9k/Desktop/TestLayout.png', QgsLayoutExporter.ImageExportSettings())  
+
 
 
 
@@ -758,6 +931,7 @@ class WaporDataToolDialog(QtWidgets.QDialog, FORM_CLASS):
 
         destFN = QFileDialog.getOpenFileName(
             None, 'Select HRU (hru2.shp) shapefile', startingDir, "Shapefile (*.shp)")
+            
         destFN = destFN[0]
         if len(destFN) > 0:
             hru_shp_fn = os.path.join(os.path.dirname(__file__), 'shp.dll')
