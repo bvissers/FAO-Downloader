@@ -292,45 +292,46 @@ class WaporDataToolDialog(QtWidgets.QDialog, FORM_CLASS):
 
                     # NEED TO ADD MAKE self.cbx_analysis_lvl.currentText() for L1, L2, L3
                     level = self.cbx_analysis_lvl.currentText()
-                    rootdir = self.cbb_download_batch_swat.currentText()
+                    rootdir = f"{self.txb_download_location.text()}/{self.cbb_download_batch_swat.currentText()}"
                     parameter = (Dic_type[self.cbx_analysis_swat_var.currentText()] + '_' +
                                           Dic_time[self.cbx_analysis_swat_ts.currentText()])
 
-
+                    output_file = ""
                     for folder in os.listdir(rootdir):
-                        if level in folder and parameter in folder:
+                        if (level in folder) and (parameter in folder):
                             #Gives full file extention of where the rasterfiles are located
                             
                             print(os.path.join(rootdir , folder))
-                            #could return a True statment
-                            return True
+                            
+                            # proceed to average calculations
+
+                            # todo: add warning if date range is not valid, wise to default to available data
+                            analysis_start = self.date_from_swat.date().toPyDate()
+                            analysis_end = self.date_to_swat.date().toPyDate()
+
+                            self.create_path(f"{self.txb_download_location.text()}/wapor/")
+                            output_file = f"{self.txb_download_location.text()}/wapor/{fn_suffix}_{self.analysis_constants['swat']['extraction'][self.cbx_analysis_swat_var.currentText()].variable}.tif"
+                            self.raster_mean(os.path.join(rootdir , folder), analysis_start, analysis_end, output_file)
+                            
+                        else:
+                            pass
+                            # warn  user that the needed files were not found and prompt a download for the specified period (or just suggest)
                     
                     
-                    
-                    
-                    
-                    
-                    
-                    
-                    
-                    
-                    # this is a temorary check for mechanism only
-                    if self.exists(f"{self.txb_download_location.text()}/{self.cbb_download_batch_swat.currentText()}/L1_AETI_A/L1_AETI_09[2009-01-01,2010-01-01).tif"):
+                    if self.exists(output_file):
                         rlayer = QgsRasterLayer(
-                            f"{self.txb_download_location.text()}/{self.cbb_download_batch_swat.currentText()}/L1_AETI_A/L1_AETI_09[2009-01-01,2010-01-01).tif",
-                            f"WaPOR {fn_suffix} AET", 'gdal')
+                            f"{output_file}", f"WaPOR {fn_suffix} AET", 'gdal')
                         
                         self.loadLayerToGroup(rlayer, 'Annual Average')
-                        
-                        
-                        #wapor_analysis_folder should be pull full file address from self.cbb_download_batch_swat somehow
-                    #wapor_analysis_folder = r'C:\Users\brend\Documents\TEST AF\WaPOR Download 2022-08-06-20-27-50\L1_AETI_A'
-                    #analysis_start = self.date_from_swat.toPyDate().strftime("%Y-%m-%d")
-                    #analysis_end = self.date_to_swat.toPyDate().strftime("%Y-%m-%d")
-                    #raster_mean(wapor_analysis_folder,analysis_start, analysis_end)
+                    
+                    
 
-    def write_raster(raster_array, gt, data_obj, outputpath, dtype, nodata, nbands=1):
-        print(nodata)
+
+
+
+
+    def write_raster(self, raster_array, gt, data_obj, outputpath, dtype, nodata, nbands=1):
+
         height, width = raster_array.shape
 
         # Prepare destination file
@@ -351,41 +352,56 @@ class WaporDataToolDialog(QtWidgets.QDialog, FORM_CLASS):
         # Close output raster dataset 
         dest = None
 
-    def raster_mean(folder, start, end):   
-        filename = os.path.basename(wapor_analysis_folder) + " Mean"    
+    def raster_mean(self, wapor_analysis_folder, start, end, out_fn):   
+            
         Filelist = []
-        for file in os.listdir(folder):
+        for file in os.listdir(wapor_analysis_folder):
             try: 
                 substring_i = file.find('[')
-                Filedate = datetime.datetime.strptime(file[substring_i + 1 : substring_i + 11],'%Y-%m-%d')
+                Filedate = datetime.datetime.strptime(file[substring_i + 1 : substring_i + 11],'%Y-%m-%d').date()
                 #Start is inclusive, End is exclusive
+
+                # this did not work because of diffferences in object types
                 if Filedate >= start and Filedate < end:
-                    Filelist.append(os.path.join(folder,file))
+                    Filelist.append(os.path.join(wapor_analysis_folder,file))
             except:
-                pass
+                raise
                 
         i=0
+        print(Filelist)
+        allarrays = None
         for file in Filelist:
+            print(file)
+            print(file)
+            print(file)
+            print(file)
+            print(file)
             i +=1
             gd_obj = gdal.Open(file)
             array = gd_obj.ReadAsArray()
             array = np.expand_dims(array,2)
+            
             if i == 1:
                 allarrays = array
+                print('--------------------------------')
+                print(allarrays)
+                print('--------------------------------')
                 srs = gdal.Open(file)
                 srs.RasterCount
                 nodata = (srs.GetRasterBand(1).GetNoDataValue())
                 srs = None
                 
             else:
+                print('++++++++++++++++++++++++++++++++')
+                print(allarrays)
+                print('++++++++++++++++++++++++++++++++')
                 allarrays = np.concatenate((allarrays, array), axis=2)
+
         #currently doesn't exclude locations with a mix of nodata values and real values
         mean_of_tiffs = np.nanmean(allarrays, axis=2)
         
-        
-        outputpath = os.path.join(folder , filename + '.tif')
         #Currently save the mean raster with the rest of the other files
-        write_raster(mean_of_tiffs, gd_obj.GetGeoTransform(), gd_obj, outputpath, gdal.GDT_Float32, nodata)
+        self.write_raster(mean_of_tiffs, gd_obj.GetGeoTransform(), gd_obj, out_fn, gdal.GDT_Float32, nodata)
         
 
 
