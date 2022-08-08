@@ -34,10 +34,13 @@ from osgeo import gdal, ogr, osr
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
+
 from qgis.core import *
 from qgis.gui import QgsMapLayerComboBox
 from qgis.PyQt import QtWidgets, uic
 from qgis.utils import iface
+
+from qgis.analysis import *
 
 # This loads your .ui file so that PyQt can populate your plugin with the elements from Qt Designer
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
@@ -175,10 +178,10 @@ class WaporDataToolDialog(QtWidgets.QDialog, FORM_CLASS):
 
         # set up ui
         root = QgsProject.instance().layerTreeRoot()
-        waporTkGroup = root.findGroup("Wapor Tolkit")
+        waporTkGroup = root.findGroup("Wapor Toolkit")
         
         if waporTkGroup is None:
-            waporTkGroup = root.insertGroup(0, "Wapor Tolkit")
+            waporTkGroup = root.insertGroup(0, "Wapor Toolkit")
 
         swat_analysis = waporTkGroup.findGroup("SWAT+ Analysis")
 
@@ -354,6 +357,31 @@ class WaporDataToolDialog(QtWidgets.QDialog, FORM_CLASS):
         self.layout.setName(layoutName)
         self.manager.addLayout(self.layout)
 
+        # add difference map here
+        sw_raster = QgsProject.instance().mapLayersByName('SWAT+ aa ET')[0]
+        swat_target=QgsRasterCalculatorEntry()
+        swat_target.raster = sw_raster
+        swat_target.bandNumber = 1
+        swat_target.ref = 'swat_raster@1'
+
+        wp_raster = QgsProject.instance().mapLayersByName('WaPOR aa AET')[0]
+        wapor_target=QgsRasterCalculatorEntry()
+        wapor_target.raster = wp_raster
+        wapor_target.bandNumber = 1
+        wapor_target.ref = 'wapor_raster@1'
+
+        entries = [ swat_target , wapor_target ]
+
+        final_output = f"{self.txb_download_location.text()}/swat-plus/{fn_suffix}_{self.analysis_constants['swat']['extraction'][self.cbx_analysis_swat_var.currentText()].variable}_diff.tif"
+        
+        calc=QgsRasterCalculator ( f'{wapor_target.ref} - {swat_target.ref}', f"{final_output}" , 'GTiff', sw_raster.extent(), sw_raster.width(), sw_raster.height(), entries )
+        calc.processCalculation()
+
+        lyr_nm_tmp = f"{self.cbx_analysis_swat_var.currentText()} Difference (WaPOR - SWAT+)"
+        final_raster=QgsRasterLayer(final_output, lyr_nm_tmp, "gdal")
+        
+        self.loadLayerToGroup(final_raster, 'Annual Average')
+
         # populate the layout
                                           
 
@@ -392,41 +420,72 @@ class WaporDataToolDialog(QtWidgets.QDialog, FORM_CLASS):
         wapor_map.attemptMove(QgsLayoutPoint(115, 30, QgsUnitTypes.LayoutMillimeters))
         wapor_map.attemptResize(QgsLayoutSize(80, 80, QgsUnitTypes.LayoutMillimeters))
 
+        # Difference map layer now
+        diff_map_layer = QgsLayoutItemMap(self.layout)
+        diff_map_layer.setRect(20, 20, 20, 20)
+
+        diff_map_layer_ = QgsProject.instance().mapLayersByName(lyr_nm_tmp)[0]
+
+        diff_map_layer.setLayers([diff_map_layer_])
+        diff_map_layer.storeCurrentLayerStyles()
+        diff_map_layer.setExtent(layout_map_extents)
+        self.layout.addLayoutItem(diff_map_layer)
+
+        #Move & Resize map on print layout canvas
+        diff_map_layer.attemptMove(QgsLayoutPoint(200, 30, QgsUnitTypes.LayoutMillimeters))
+        diff_map_layer.attemptResize(QgsLayoutSize(80, 80, QgsUnitTypes.LayoutMillimeters))
+
         # style layers
         raster_layers_aa_ET = [
             QgsProject.instance().mapLayersByName('SWAT+ aa ET')[0],
             QgsProject.instance().mapLayersByName('WaPOR aa AET')[0],
         ]
 
-        style_fn = os.path.join(os.path.dirname(__file__), 'et_style.qml')
+        et_style_fn = os.path.join(os.path.dirname(__file__), 'et_style.qml')
+        et_dif_style_fn = os.path.join(os.path.dirname(__file__), 'et_diff_style.qml')
+
+        # load layer styles
+        diff_map_layer_.loadNamedStyle(et_dif_style_fn)
+        iface.layerTreeView().refreshLayerSymbology(diff_map_layer_.id())
+        diff_map_layer_.triggerRepaint()
 
         for rast_lyr in raster_layers_aa_ET:
-            rast_lyr.loadNamedStyle(style_fn)
+            rast_lyr.loadNamedStyle(et_style_fn)
             iface.layerTreeView().refreshLayerSymbology(rast_lyr.id())
             rast_lyr.triggerRepaint()
 
-        # add difference map here (awaits brenden)
-
-
         # add legends
-
         legend = QgsLayoutItemLegend(self.layout)
-        legend.setTitle("Legend")
-
-        wapor_layer = QgsProject.instance().layerTreeRoot().findLayer(current_layer.id())
+        # legend_diff = QgsLayoutItemLegend(self.layout)
+        legend.setTitle("")
+        # legend_diff.setTitle("")
 
         layersToAdd = [layer for layer in QgsProject().instance().mapLayers().values() if layer.name() == 'WaPOR aa AET']
+        # layersToAdd_diff = [layer for layer in QgsProject().instance().mapLayers().values() if layer.name() == lyr_nm_tmp]
 
         root = QgsLayerTree()
+        root_dif = QgsLayerTree()
 
         for layer in layersToAdd:
             #add layer objects to the layer tree
             root.addLayer(layer)
 
+        for layer_diff in layersToAdd_diff:
+            #add layer objects to the layer tree
+            root_dif.addLayer(layer_diff)
+
         legend.model().setRootGroup(root)
         self.layout.addLayoutItem(legend)
         legend.attemptMove(QgsLayoutPoint(40, 110, QgsUnitTypes.LayoutMillimeters))
         
+
+        # legend_diff.model().setRootGroup(root)
+        # self.layout.addLayoutItem(legend_diff)
+        # legend_diff.attemptMove(QgsLayoutPoint(210, 110, QgsUnitTypes.LayoutMillimeters))
+        
+
+
+
         # add text
         title = QgsLayoutItemLabel(self.layout)
         title.setText("Annual Average ET Report")
@@ -450,6 +509,13 @@ class WaporDataToolDialog(QtWidgets.QDialog, FORM_CLASS):
         self.layout.addLayoutItem(comparison_details)
         comparison_details.attemptMove(QgsLayoutPoint(100, 110, QgsUnitTypes.LayoutMillimeters)) 
         comparison_details.attemptResize(QgsLayoutSize(1100, 80, QgsUnitTypes.LayoutMillimeters))
+
+
+
+
+
+
+
 
 
 
@@ -556,18 +622,13 @@ class WaporDataToolDialog(QtWidgets.QDialog, FORM_CLASS):
             
             if i == 1:
                 allarrays = array
-                print('--------------------------------')
-                print(allarrays)
-                print('--------------------------------')
+                
                 srs = gdal.Open(file)
                 srs.RasterCount
                 nodata = (srs.GetRasterBand(1).GetNoDataValue())
                 srs = None
                 
             else:
-                print('++++++++++++++++++++++++++++++++')
-                print(allarrays)
-                print('++++++++++++++++++++++++++++++++')
                 allarrays = np.concatenate((allarrays, array), axis=2)
 
         #currently doesn't exclude locations with a mix of nodata values and real values
@@ -629,7 +690,6 @@ class WaporDataToolDialog(QtWidgets.QDialog, FORM_CLASS):
         y_res = int((y_max - y_min) / pixel_size)
         target_ds = gdal.GetDriverByName('GTiff').Create(raster_fn, x_res, y_res, 1, gdal.GDT_Float32)
         target_ds.SetGeoTransform((x_min, pixel_size, 0, y_max, 0, -pixel_size))
-        print(dir(source_layer))
         target_ds.SetProjection(source_layer.GetSpatialRef().ExportToWkt())
         band = target_ds.GetRasterBand(1)
         band.SetNoDataValue(NoData_value)
@@ -741,7 +801,6 @@ class WaporDataToolDialog(QtWidgets.QDialog, FORM_CLASS):
     def get_bbox(self):
         vector_layer = self.mMapLayerComboBox.currentLayer()
         bounding=vector_layer.extent()   
-        print(vector_layer.crs())     
         if vector_layer.crs() != QgsCoordinateReferenceSystem("EPSG:4326"):
             crsSrc = vector_layer.crs()    # WGS 84
             crsDest = QgsCoordinateReferenceSystem("EPSG:4326")# WGS 84 / UTM zone 33N
@@ -931,7 +990,7 @@ class WaporDataToolDialog(QtWidgets.QDialog, FORM_CLASS):
 
         destFN = QFileDialog.getOpenFileName(
             None, 'Select HRU (hru2.shp) shapefile', startingDir, "Shapefile (*.shp)")
-            
+
         destFN = destFN[0]
         if len(destFN) > 0:
             hru_shp_fn = os.path.join(os.path.dirname(__file__), 'shp.dll')
@@ -1110,9 +1169,6 @@ class WorkerThread(QThread):
             self.DownloadRequest()  
         else:
             self.Mbox( 'Error:', 'Error found in inputs, canceling WaPOR request.',0)
-
-
-
 
   
     def query_accessToken(self):

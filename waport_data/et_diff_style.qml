@@ -41,7 +41,7 @@
             <Option name="dash_pattern_offset_unit" value="MM" type="QString"/>
             <Option name="draw_inside_polygon" value="0" type="QString"/>
             <Option name="joinstyle" value="bevel" type="QString"/>
-            <Option name="line_color" value="152,125,183,255" type="QString"/>
+            <Option name="line_color" value="243,166,178,255" type="QString"/>
             <Option name="line_style" value="solid" type="QString"/>
             <Option name="line_width" value="0.6" type="QString"/>
             <Option name="line_width_unit" value="MM" type="QString"/>
@@ -69,7 +69,7 @@
           <prop k="dash_pattern_offset_unit" v="MM"/>
           <prop k="draw_inside_polygon" v="0"/>
           <prop k="joinstyle" v="bevel"/>
-          <prop k="line_color" v="152,125,183,255"/>
+          <prop k="line_color" v="243,166,178,255"/>
           <prop k="line_style" v="solid"/>
           <prop k="line_width" v="0.6"/>
           <prop k="line_width_unit" v="MM"/>
@@ -108,7 +108,7 @@
         <layer class="SimpleFill" enabled="1" locked="0" pass="0">
           <Option type="Map">
             <Option name="border_width_map_unit_scale" value="3x:0,0,0,0,0,0" type="QString"/>
-            <Option name="color" value="152,125,183,255" type="QString"/>
+            <Option name="color" value="243,166,178,255" type="QString"/>
             <Option name="joinstyle" value="bevel" type="QString"/>
             <Option name="offset" value="0,0" type="QString"/>
             <Option name="offset_map_unit_scale" value="3x:0,0,0,0,0,0" type="QString"/>
@@ -120,7 +120,7 @@
             <Option name="style" value="solid" type="QString"/>
           </Option>
           <prop k="border_width_map_unit_scale" v="3x:0,0,0,0,0,0"/>
-          <prop k="color" v="152,125,183,255"/>
+          <prop k="color" v="243,166,178,255"/>
           <prop k="joinstyle" v="bevel"/>
           <prop k="offset" v="0,0"/>
           <prop k="offset_map_unit_scale" v="3x:0,0,0,0,0,0"/>
@@ -160,7 +160,7 @@
     <provider>
       <resampling zoomedInResamplingMethod="nearestNeighbour" enabled="false" zoomedOutResamplingMethod="nearestNeighbour" maxOversampling="2"/>
     </provider>
-    <rasterrenderer type="singlebandpseudocolor" opacity="1" nodataColor="" classificationMin="237.6999969" alphaBand="-1" band="1" classificationMax="1409.1601563">
+    <rasterrenderer type="singlebandpseudocolor" opacity="1" nodataColor="" classificationMin="-841.9331665" alphaBand="-1" band="1" classificationMax="1904.1450195">
       <rasterTransparency/>
       <minMaxOrigin>
         <limits>MinMax</limits>
@@ -171,7 +171,7 @@
         <stdDevFactor>2</stdDevFactor>
       </minMaxOrigin>
       <rastershader>
-        <colorrampshader minimumValue="237.6999969" clip="0" labelPrecision="0" colorRampType="DISCRETE" classificationMode="2" maximumValue="1409.1601562999999">
+        <colorrampshader minimumValue="-841.93316649999997" clip="0" labelPrecision="4" colorRampType="DISCRETE" classificationMode="2" maximumValue="1904.1450195">
           <colorramp name="[source]" type="gradient">
             <Option type="Map">
               <Option name="color1" value="215,25,28,255" type="QString"/>
@@ -190,11 +190,11 @@
             <prop k="spec" v="rgb"/>
             <prop k="stops" v="0.25;253,174,97,255;rgb;ccw:0.5;255,255,191,255;rgb;ccw:0.75;171,221,164,255;rgb;ccw"/>
           </colorramp>
-          <item value="471.99202877999994" color="#d7191c" label="&lt;= 472" alpha="255"/>
-          <item value="706.2840606599999" color="#fdae61" label="472 - 706" alpha="255"/>
-          <item value="940.5760925399999" color="#ffffbf" label="706 - 941" alpha="255"/>
-          <item value="1174.86812442" color="#abdda4" label="941 - 1175" alpha="255"/>
-          <item value="inf" color="#2b83ba" label="> 1175" alpha="255"/>
+          <item value="-292.7175293" color="#d7191c" label="&lt;= -292.7175" alpha="255"/>
+          <item value="256.4981078999999" color="#fdae61" label="-292.7175 - 256.4981" alpha="255"/>
+          <item value="805.7137450999999" color="#ffffbf" label="256.4981 - 805.7137" alpha="255"/>
+          <item value="1354.9293822999998" color="#abdda4" label="805.7137 - 1354.9294" alpha="255"/>
+          <item value="inf" color="#2b83ba" label="> 1354.9294" alpha="255"/>
           <rampLegendSettings minimumLabel="" prefix="" direction="0" suffix="" maximumLabel="" useContinuousLegend="1" orientation="2">
             <numericFormat id="basic">
               <Option type="Map">

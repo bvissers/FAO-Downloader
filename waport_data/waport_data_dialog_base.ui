@@ -735,14 +735,31 @@
             <height>22</height>
            </rect>
           </property>
+          <property name="dateTime">
+           <datetime>
+            <hour>0</hour>
+            <minute>0</minute>
+            <second>0</second>
+            <year>2015</year>
+            <month>1</month>
+            <day>1</day>
+           </datetime>
+          </property>
+          <property name="time">
+           <time>
+            <hour>0</hour>
+            <minute>0</minute>
+            <second>0</second>
+           </time>
+          </property>
           <property name="calendarPopup">
            <bool>true</bool>
           </property>
           <property name="date">
            <date>
-            <year>2000</year>
+            <year>2015</year>
             <month>1</month>
-            <day>3</day>
+            <day>1</day>
            </date>
           </property>
          </widget>
@@ -754,6 +771,16 @@
             <width>101</width>
             <height>22</height>
            </rect>
+          </property>
+          <property name="dateTime">
+           <datetime>
+            <hour>0</hour>
+            <minute>0</minute>
+            <second>0</second>
+            <year>2021</year>
+            <month>1</month>
+            <day>1</day>
+           </datetime>
           </property>
           <property name="calendarPopup">
            <bool>true</bool>
