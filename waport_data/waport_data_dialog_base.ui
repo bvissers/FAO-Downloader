@@ -72,7 +72,7 @@
     <enum>QTabWidget::Rounded</enum>
    </property>
    <property name="currentIndex">
-    <number>1</number>
+    <number>0</number>
    </property>
    <widget class="QWidget" name="tab_1">
     <attribute name="title">
@@ -84,7 +84,7 @@
        <x>9</x>
        <y>9</y>
        <width>481</width>
-       <height>101</height>
+       <height>91</height>
       </rect>
      </property>
      <property name="title">
@@ -106,10 +106,10 @@
      <widget class="QLabel" name="label_3">
       <property name="geometry">
        <rect>
-        <x>36</x>
+        <x>16</x>
         <y>34</y>
-        <width>71</width>
-        <height>16</height>
+        <width>91</width>
+        <height>20</height>
        </rect>
       </property>
       <property name="text">
@@ -119,8 +119,8 @@
      <widget class="QCheckBox" name="chb_clip_to_cutline">
       <property name="geometry">
        <rect>
-        <x>130</x>
-        <y>70</y>
+        <x>20</x>
+        <y>60</y>
         <width>131</width>
         <height>20</height>
        </rect>
@@ -129,65 +129,14 @@
        <string>Clip to Cutline</string>
       </property>
      </widget>
-     <widget class="QComboBox" name="combo_dekadal">
-      <property name="geometry">
-       <rect>
-        <x>370</x>
-        <y>70</y>
-        <width>91</width>
-        <height>22</height>
-       </rect>
-      </property>
-      <item>
-       <property name="text">
-        <string>Cumulative</string>
-       </property>
-      </item>
-      <item>
-       <property name="text">
-        <string>Average</string>
-       </property>
-      </item>
-     </widget>
-     <widget class="QLabel" name="label_7">
-      <property name="geometry">
-       <rect>
-        <x>300</x>
-        <y>70</y>
-        <width>71</width>
-        <height>21</height>
-       </rect>
-      </property>
-      <property name="font">
-       <font>
-        <pointsize>8</pointsize>
-       </font>
-      </property>
-      <property name="text">
-       <string>Dekadal Data </string>
-      </property>
-     </widget>
-    </widget>
-    <widget class="QPushButton" name="btn_retrieve_catalog">
-     <property name="geometry">
-      <rect>
-       <x>400</x>
-       <y>410</y>
-       <width>91</width>
-       <height>23</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>Load Catalog</string>
-     </property>
     </widget>
     <widget class="QPushButton" name="btn_download">
      <property name="geometry">
       <rect>
        <x>350</x>
-       <y>460</y>
+       <y>490</y>
        <width>141</width>
-       <height>101</height>
+       <height>71</height>
       </rect>
      </property>
      <property name="font">
@@ -205,7 +154,7 @@
        <x>10</x>
        <y>120</y>
        <width>481</width>
-       <height>281</height>
+       <height>251</height>
       </rect>
      </property>
      <column>
@@ -218,9 +167,9 @@
      <property name="geometry">
       <rect>
        <x>10</x>
-       <y>440</y>
+       <y>410</y>
        <width>331</width>
-       <height>161</height>
+       <height>191</height>
       </rect>
      </property>
      <property name="title">
@@ -302,7 +251,7 @@
       <property name="geometry">
        <rect>
         <x>290</x>
-        <y>120</y>
+        <y>160</y>
         <width>31</width>
         <height>26</height>
        </rect>
@@ -315,7 +264,7 @@
       <property name="geometry">
        <rect>
         <x>10</x>
-        <y>90</y>
+        <y>130</y>
         <width>171</width>
         <height>21</height>
        </rect>
@@ -333,10 +282,48 @@
       <property name="geometry">
        <rect>
         <x>10</x>
-        <y>120</y>
+        <y>160</y>
         <width>271</width>
         <height>24</height>
        </rect>
+      </property>
+     </widget>
+     <widget class="QComboBox" name="combo_dekadal">
+      <property name="geometry">
+       <rect>
+        <x>220</x>
+        <y>80</y>
+        <width>101</width>
+        <height>22</height>
+       </rect>
+      </property>
+      <item>
+       <property name="text">
+        <string>Cumulative</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>Average</string>
+       </property>
+      </item>
+     </widget>
+     <widget class="QLabel" name="label_dekadal">
+      <property name="geometry">
+       <rect>
+        <x>110</x>
+        <y>80</y>
+        <width>91</width>
+        <height>21</height>
+       </rect>
+      </property>
+      <property name="font">
+       <font>
+        <pointsize>8</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>Dekadal Data </string>
       </property>
      </widget>
     </widget>
@@ -386,15 +373,14 @@
      <property name="geometry">
       <rect>
        <x>10</x>
-       <y>400</y>
-       <width>331</width>
+       <y>380</y>
+       <width>261</width>
        <height>20</height>
       </rect>
      </property>
      <property name="font">
       <font>
        <pointsize>8</pointsize>
-       <weight>50</weight>
        <bold>false</bold>
       </font>
      </property>
@@ -468,6 +454,169 @@
      <property name="textDirection">
       <enum>QProgressBar::TopToBottom</enum>
      </property>
+    </widget>
+    <widget class="QGroupBox" name="groupBox_5">
+     <property name="geometry">
+      <rect>
+       <x>350</x>
+       <y>409</y>
+       <width>141</width>
+       <height>71</height>
+      </rect>
+     </property>
+     <property name="title">
+      <string>Workspace</string>
+     </property>
+     <widget class="QComboBox" name="cbx_workspace">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>30</y>
+        <width>121</width>
+        <height>22</height>
+       </rect>
+      </property>
+      <item>
+       <property name="text">
+        <string>AQUAMAPS</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>ASIS</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>C2ATLAS</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>C3S</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>CHIRPS</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>CROPWATCH</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>CRTB</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>DLMF</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>FAOSTAT</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>FROM_GLC</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>GAEZ_2015</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>GAEZ_V4</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>GISMGR_TEST</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>GLEAM3</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>GLW</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>GLW3</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>GLW4</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>NASA</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>NATURAL_EARTH</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>NMME</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>RDMS</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>RICCAR</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>RICCAR_2</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>RSCROP</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>RVF</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>WAPOR_2</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>WATER</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>WPOP</string>
+       </property>
+      </item>
+     </widget>
     </widget>
    </widget>
    <widget class="QWidget" name="tab_2">

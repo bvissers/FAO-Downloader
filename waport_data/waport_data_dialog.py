@@ -73,12 +73,19 @@ class WaporDataToolDialog(QtWidgets.QDialog, FORM_CLASS):
 
         self.current_download_location = None
 
+
+        
+
         # set initial states
         self.initialise_defaults()
 
         # connect click functions
         self.treeWidget.itemDoubleClicked.connect(self.LaunchPopup) 
-        self.btn_retrieve_catalog.clicked.connect(self.load_catalog)
+        
+
+
+        
+        self.cbx_workspace.currentTextChanged.connect(self.load_catalog)
         self.btn_update_token.clicked.connect(self.update_token)
         self.btn_check_token.clicked.connect(self.validate_token)
         self.btn_browse_default_download_dir.clicked.connect(self.browse_default_directory)
@@ -104,6 +111,7 @@ class WaporDataToolDialog(QtWidgets.QDialog, FORM_CLASS):
         self.project = None
 
 
+        
     # to store swat constants
     class swat_analysis_var_constants:
         def __init__(self, variable, file_prefix, column_index):
@@ -120,8 +128,7 @@ class WaporDataToolDialog(QtWidgets.QDialog, FORM_CLASS):
         date_time_now = datetime.datetime.now()
         self.date_from.setDate(QDate(2009, 1, 1))
         self.date_to.setDate(QDate(date_time_now))
-
-
+        
         # set default control state
         self.chb_clip_to_cutline.setCheckState(2)  # it is checked
         
@@ -167,7 +174,11 @@ class WaporDataToolDialog(QtWidgets.QDialog, FORM_CLASS):
 
         self.treeWidget.clear()
         self.treeWidget.headerItem().setText(0, '')
-
+       
+        # load catalog to treewidgit
+        self.cbx_workspace.setCurrentIndex(25)
+        self.load_catalog()
+        
         try: self.refresh_swat_wapor_datasets()
         except: pass
 
@@ -733,32 +744,55 @@ class WaporDataToolDialog(QtWidgets.QDialog, FORM_CLASS):
 
     def load_catalog(self):
         print('loading catalog...')
-
-        try:
-            #Cubes: provides operations pertaining to Cube resources
-            #returns a list of available Cube resource type items
-            #example:https://io.apps.fao.org/gismgr/api/v1/catalog/workspaces/WAPOR_2/cubes?overview=false&paged=false&sort=sort%20%3D%20code&tags=L1'
-            L1 = ((requests.get('{0}{1}/cubes?overview=false&paged=false&sort=sort%20%3D%20code&tags=L1'.format(self.path_catalog,self.workspaces)).json()).get('response'))
-            L2 = ((requests.get('{0}{1}/cubes?overview=false&paged=false&sort=sort%20%3D%20code&tags=L2'.format(self.path_catalog,self.workspaces)).json()).get('response'))
-            L3 = ((requests.get('{0}{1}/cubes?overview=false&paged=false&sort=sort%20%3D%20code&tags=L3'.format(self.path_catalog,self.workspaces)).json()).get('response'))            
-            self.MasterList = L1 + L2 + L3
+        
+        
+        if self.cbx_workspace.currentText() == 'WAPOR_2':
+            print(2)    
             
-            #sorts by type of information
-            L1 = sorted(L1, key=lambda d: d.get('caption'))
-            L2 = sorted(L2, key=lambda d: d.get('caption'))
-            
-            #Sorts first country location, then by type of information
-            L3 = sorted(L3, key=lambda d: [d.get('additionalInfo', {}).get('spatialExtent').partition(", ")[2],d.get('additionalInfo', {}).get('spatialExtent').partition(", ")[1] ,d.get('code') ])
-            
-            #creates the treewidget to select data from
-            self.treeWidget.clear()
-            self.treeWidget.headerItem().setText(0, self.workspaces)
-            self.TreeAddBasic(L1, "Level 1")
-            self.TreeAddBasic(L2, "Level 2")
-            self.TreeAddLvl3(L3, "Level 3")
-
-        except: pass
+            try:
+                #Cubes: provides operations pertaining to Cube resources
+                #returns a list of available Cube resource type items
+                #example:https://io.apps.fao.org/gismgr/api/v1/catalog/workspaces/WAPOR_2/cubes?overview=false&paged=false&sort=sort%20%3D%20code&tags=L1'
+                L1 = ((requests.get('{0}{1}/cubes?overview=false&paged=false&sort=sort%20%3D%20code&tags=L1'.format(self.path_catalog,self.workspaces)).json()).get('response'))
+                L2 = ((requests.get('{0}{1}/cubes?overview=false&paged=false&sort=sort%20%3D%20code&tags=L2'.format(self.path_catalog,self.workspaces)).json()).get('response'))
+                L3 = ((requests.get('{0}{1}/cubes?overview=false&paged=false&sort=sort%20%3D%20code&tags=L3'.format(self.path_catalog,self.workspaces)).json()).get('response'))            
+                
+                
+                #sorts by type of information
+                L1 = sorted(L1, key=lambda d: d.get('caption'))
+                L2 = sorted(L2, key=lambda d: d.get('caption'))
+                
+                #Sorts first country location, then by type of information
+                L3 = sorted(L3, key=lambda d: [d.get('additionalInfo', {}).get('spatialExtent').partition(", ")[2],d.get('additionalInfo', {}).get('spatialExtent').partition(", ")[1] ,d.get('code') ])
+                
+                self.MasterList = L1 + L2 + L3
+                level_list = [L1, L2, L3] 
+                #creates the treewidget to select data from
+                self.treeWidget.clear()
+                self.treeWidget.headerItem().setText(0, self.workspaces)
+                self.TreeWaPOR(level_list, "WAPOR_2")
+                
+                self.combo_dekadal.show()
+                self.label_dekadal.show()
+                
+                
+            except: pass
+        
+        else:
+            try:
+                L = ((requests.get('{0}{1}/cubes?overview=false&paged=false'.format(self.path_catalog,self.cbx_workspace.currentText())).json()).get('response'))
+                self.MasterList = L
+                self.treeWidget.clear()
+                self.treeWidget.headerItem().setText(0, self.cbx_workspace.currentText())
+                self.TreeAddBasic(L, self.cbx_workspace.currentText())    
+                
+                self.combo_dekadal.hide()
+                self.label_dekadal.hide()
+            except: pass
             # self.Mbox( 'Error' ,'Error Loading data from the WaPOR Server',0)
+
+
+
 
 
     def TreeAddBasic(self, L, name):    
@@ -775,29 +809,46 @@ class WaporDataToolDialog(QtWidgets.QDialog, FORM_CLASS):
             child.setCheckState(0, Qt.CheckState.Unchecked)
             
             
-    def TreeAddLvl3(self, L, name):    
-       
+    def TreeWaPOR(self, level_list, name):    
         parent = QTreeWidgetItem(self.treeWidget)
-        
-        parent.setText(0, name)        
-        parent.setFlags(parent.flags()   | Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsAutoTristate)
+        parent.setText(0, name)
+        parent.setFlags(parent.flags() |  Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsAutoTristate)
+        Levels = ['Level 1', 'Level 2', 'Level 3']
         locations = []
+        index = 0
+        for L in level_list:        
+            level = QTreeWidgetItem(parent)
+            level.setFlags(level.flags() | Qt.ItemFlag.ItemIsUserCheckable| Qt.ItemFlag.ItemIsAutoTristate)
+            level.setText(0, Levels[index])
+            level.setCheckState(0, Qt.CheckState.Unchecked)
+                       
+            
+            
+            if L != level_list[2]:
+                for x in L:
+                    child = QTreeWidgetItem(level)
+                    child.setFlags(child.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+                    child.setText(0, x.get('caption'))
+                    child.setText(1, str(x.get('code')))
+                    child.setCheckState(0, Qt.CheckState.Unchecked)
+   
+            if L == level_list[2]:
+                for x in L:
+                    if (x.get('additionalInfo').get('spatialExtent')) not in locations:
+                        locations.append(x.get('additionalInfo').get('spatialExtent'))
+                        country = QTreeWidgetItem(level)
+                        country.setFlags(country.flags() | Qt.ItemFlag.ItemIsUserCheckable| Qt.ItemFlag.ItemIsAutoTristate)
+                        country.setText(0, locations[-1])
+                        country.setCheckState(0, Qt.CheckState.Unchecked)        
         
-        for x in L:
-            if (x.get('additionalInfo').get('spatialExtent')) not in locations:
-                locations.append(x.get('additionalInfo').get('spatialExtent'))
-                country = QTreeWidgetItem(parent)
-                country.setFlags(country.flags() | Qt.ItemFlag.ItemIsUserCheckable| Qt.ItemFlag.ItemIsAutoTristate)
-                country.setText(0, locations[-1])
-                country.setCheckState(0, Qt.CheckState.Unchecked)        
+                    child2 = QTreeWidgetItem(country)
+                    child2.setFlags(child2.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+                    child2.setText(0, x.get('caption'))
+                    child2.setCheckState(0, Qt.CheckState.Unchecked)     
+                    child2.setText(1, str(x.get('code')))              
+            index += 1
 
-            child2 = QTreeWidgetItem(country)
-            child2.setFlags(child2.flags() | Qt.ItemFlag.ItemIsUserCheckable)
-            child2.setText(0, x.get('caption'))
-            child2.setCheckState(0, Qt.CheckState.Unchecked)     
-            child2.setText(1, str(x.get('code')))              
-
-
+            
     def get_bbox(self):
         vector_layer = self.mMapLayerComboBox.currentLayer()
         bounding=vector_layer.extent()   
@@ -824,7 +875,7 @@ class WaporDataToolDialog(QtWidgets.QDialog, FORM_CLASS):
         
         self.worker = WorkerThread(token, bbox, 
                                    self.current_download_location, self.chb_clip_to_cutline.isChecked(), self.combo_dekadal.currentText(),
-                                   self.treeWidget, start_date, end_date, self.MasterList, vector_location)
+                                   self.treeWidget, start_date, end_date, self.MasterList, vector_location, self.cbx_workspace.currentText())
         self.worker.start()
         self.worker.UpdateStatus.connect(self.evt_UpdateStatusUI)
         self.worker.UpdateProgress.connect(self.UpdateProgressUI)
@@ -1059,36 +1110,84 @@ class WaporDataToolDialog(QtWidgets.QDialog, FORM_CLASS):
     
 
     def LaunchPopup(self, item):
-        if item.childCount()  == 0:
-            self.pop = InfoPopup(item.text(1), self.MasterList)
+        if item.childCount()  == 0 or item.parent() == None:
+            if item.childCount()  == 0 and item.parent() != None:
+                self.pop = InfoPopup(item.text(1), 0, self.MasterList)
+            if item.parent() == None:
+                self.pop = InfoPopup(item.text(0),1)
+            self.pop.setWindowTitle(item.text(0))
             self.pop.show()
+        
 
 class InfoPopup(QWidget):
-        def __init__(self, cube_code, MasterList):
+        def __init__(self, code, index, MasterList = None):
             super().__init__()
             layout = QGridLayout()
-            for x in MasterList:
-                if str(x.get('code'))  == cube_code:                 
-                  keylist = ['caption', 'code', 'description']+list(x.get('additionalInfo').keys())
-                  valuelist = [x.get('caption'), x.get('code'), x.get('description')]+list(x.get('additionalInfo').values())
-                  
-                  keyitems = len(keylist)-1
-                  keyposition = 0
-                  while keyposition <= keyitems:
-                          y = QLabel(str(keylist[keyposition]))
-                          y.setWordWrap(True)
-                          y.setStyleSheet("border: 1px solid black;")
-                          y.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-                          layout.addWidget(y,keyposition,0)
-                            
-                          y = QLabel(str(valuelist[keyposition]))
-                          y.setWordWrap(True)
-                          y.setStyleSheet("border: 1px solid black;")
-                          y.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-                          layout.addWidget(y,keyposition,1)
-                          
-                          keyposition += 1
-                  break         
+            if index == 0:
+                for x in MasterList:
+                    if str(x.get('code'))  == code:                 
+                      keylist = ['caption', 'code', 'description']+list(x.get('additionalInfo').keys())
+                      valuelist = [x.get('caption'), x.get('code'), x.get('description')]+list(x.get('additionalInfo').values())
+                      
+                      keyitems = len(keylist)-1
+                      keyposition = 0
+                      while keyposition <= keyitems:
+                              y = QLabel(str(keylist[keyposition]))
+                              y.setWordWrap(True)
+                              y.setStyleSheet("border: 1px solid black;")
+                              y.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+                              layout.addWidget(y,keyposition,0)
+                                
+                              y = QLabel(str(valuelist[keyposition]))
+                              y.setWordWrap(True)
+                              y.setStyleSheet("border: 1px solid black;")
+                              y.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+                              layout.addWidget(y,keyposition,1)
+                              
+                              keyposition += 1
+                      break         
+            if index == 1:
+                      responce = ((requests.get(r'https://io.apps.fao.org/gismgr/api/v1/catalog/workspaces/{0}'.format(code)).json()).get('response'))
+                      print(responce)
+                      keylist = []
+                      valuelist = []
+                      try:
+                          valuelist.append(responce['description'])
+                          keylist.append(responce['caption'])
+                      except:
+                          pass
+                      try:
+                          valuelist.append(responce['additionalInfo']['created'])
+                          keylist.append('Created')
+                      except:
+                          pass
+                      try:
+                          valuelist.append(responce['additionalInfo']['site'])
+                          keylist.append('Site')
+                      except:
+                          pass
+                        
+                      
+                      keyitems = len(keylist)-1
+                      keyposition = 0
+                      while keyposition <= keyitems:
+                              y = QLabel(str(keylist[keyposition]))
+                              y.setWordWrap(True)
+                              y.setStyleSheet("border: 1px solid black;")
+                              y.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+                              layout.addWidget(y,keyposition,0)
+                                
+                              y = QLabel(str(valuelist[keyposition]))
+                              y.setWordWrap(True)
+                              y.setStyleSheet("border: 1px solid black;")
+                              y.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+                              layout.addWidget(y,keyposition,1)
+                              
+                              keyposition += 1
+                               
+            
+            
+            
             self.setLayout(layout)
             
             
@@ -1097,7 +1196,7 @@ class WorkerThread(QThread):
     UpdateStatus = pyqtSignal(str)
     UpdateProgress = pyqtSignal(str)
     
-    def __init__(self, wapor_api_token, bbox, FolderLocation, CropChecked, Combo, SelectWidget, Startdate, Enddate, MasterList, vector_location):
+    def __init__(self, wapor_api_token, bbox, FolderLocation, CropChecked, Combo, SelectWidget, Startdate, Enddate, MasterList, vector_location, workspace):
         super().__init__()
         self.wapor_api_token = wapor_api_token 
         self.bbox = bbox 
@@ -1115,7 +1214,7 @@ class WorkerThread(QThread):
         self.path_jobs = r'https://io.apps.fao.org/gismgr/api/v1/catalog/workspaces/WAPOR/jobs/'
         self.path_query = r'https://io.apps.fao.org/gismgr/api/v1/query/'
         self.path_sign_in = r'https://io.apps.fao.org/gismgr/api/v1/iam/sign-in/'
-        self.workspaces = 'WAPOR_2'
+        self.workspaces = workspace
 
     
     
@@ -1131,7 +1230,7 @@ class WorkerThread(QThread):
         self.UpdateStatus.emit("Status: Checking Inputs")
         #try to make new base folder
         try:
-            self.base_save_folder = os.path.join(self.FolderLocation,"WaPOR Download " + datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S"))
+            self.base_save_folder = os.path.join(self.FolderLocation,self.workspaces + " " + datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S"))
             os.makedirs(self.base_save_folder)
         except:
             self.Mbox('Error', 'Unable to create new folder for WaPOR download in the selected folder.', 0)
@@ -1142,33 +1241,18 @@ class WorkerThread(QThread):
             x += 1
         #Creats self.SelectedCubeCodes (a list of checked boxes for WaPOR request), and self.cubedict (contains info for each checked box)
         self.Selected()
+        
         #Check that at least one box is checked
         if self.SelectedCubeCodes  == []:
             self.Mbox('Error', 'Must have one item checked for WaPOR request.', 0)
             x += 1
 
-        #get the boundaries of the shape file
-        try:
-        #     data = gpd.read_file(self.vector_layer, SHAPE_RESTORE_SHX = True)
-        #     #Checks if the shape file needs to be reprojected
-        #     if data.crs['init'] != 'epsg:4326':
-        #         # change CRS to epsg 4326
-        #         data = data.to_crs(epsg = 4326)
-        #     minx, miny, maxx, maxy = data.total_bounds
-        
-        #   Does not take into account layer projection
-            pass
-            
-        except:
-            self.Mbox('Error', 'Unable to read the boundaries of the vector file.', 0)
-            x+= 1
-            
-        
         #User inputs have been checked in the above sections so now the data requests to the WaPOR server can be started    
         if x  == 0:
             self.DownloadRequest()  
         else:
-            self.Mbox( 'Error:', 'Error found in inputs, canceling WaPOR request.',0)
+            self.UpdateStatus.emit("Status:")            
+            pass
 
   
     def query_accessToken(self):
@@ -1227,7 +1311,7 @@ class WorkerThread(QThread):
                     #example:https://io.apps.fao.org/gismgr/api/v1/catalog/workspaces/WAPOR_2/cubes/L1_AETI_M/dimensions?overview=false&paged=false
                     request_json = (requests.get(r'{0}{1}/cubes/{2}/dimensions?overview=false&paged=false'.format(self.path_catalog,self.workspaces,cubecode)).json())
                     if request_json['status']  == 200:
-                        self.cubedict[cubecode].update({'cubedimensions':(request_json['response'][0])})
+                        self.cubedict[cubecode].update({'cubedimensions':(request_json['response'])})
                     else:
                         self.Mbox( 'Error' ,str(request_json['message']),0)
         
@@ -1243,24 +1327,24 @@ class WorkerThread(QThread):
                     self.UpdateProgress.emit("Progress: Starting download for Wapor data {0}.\n Item number {1} of {2}".format(cube_code, m,  str(len(self.SelectedCubeCodes))))
                     self.UpdateStatus.emit("Status: Creating Data list")
                     df_avail = self.Get_df(cube_code, self.Startdate, self.Enddate) 
-       
-
+                    
                     multiplier = self.cubedict[cube_code]['cubemeasure']['multiplier']
                     savefolder = os.path.join(self.base_save_folder, cube_code)
                     os.makedirs(savefolder)
+                    df_avail.to_csv(os.path.join(self.base_save_folder,cube_code +' list.csv'))
+                    
                    #self.ui.labelStatus.setText("Status: Constructing WaPOR Request")
-                    if 'lcc' in cube_code.lower():
+                    if 'lcc' in cube_code.lower() and self.workspaces == 'WAPOR_2':
                         self.LCC_Legend(cube_code, savefolder)
                         pass
+                    
                     n = 0
                     for index, row in df_avail.iterrows():
                         if self.isInterruptionRequested()  == False:
                             n+= 1            
                             self.UpdateProgress.emit("Progress: Starting download for Wapor data {0}. \nItem number {1} of {2} \nDownloading raster {3} of {4}".format(cube_code, m,  str(len(self.SelectedCubeCodes)), n,str(len(df_avail))))
                             self.UpdateStatus.emit("Status: Requesting download URL from WaPOR")
-  
-                            
-                            self.WaporRequest(cube_code, row)
+                            self.download_url = self.getCropRasterURL(cube_code, row) 
                             
                             self.UpdateStatus.emit("Status: Downloading")
                             resp = requests.get(self.download_url)
@@ -1285,130 +1369,151 @@ class WorkerThread(QThread):
 
         
         
-    def WaporRequest(self, cube_code, row):
-       
-              try:
-                  if self.cubedict[cube_code]['additionalInfo']['temporalExtent']  == 'Seasonal':
-                      season_val = {'Season 1':'S1','Season 2':'S2'}
-                      if 'PHE' in cube_code:
-                          stage_val = {'End':'EOS','Maximum':'MOS','Start':'SOS'}
-                          raster_stage = stage_val[row['STAGE']]
-                      else:
-                          raster_stage = None
-                          
-                      self.download_url = self.getCropRasterURL(cube_code,
-                                                         row['time_code'],
-                                                         row['raster_id'],
-                                                         season = season_val[row['SEASON']],
-                                                         stage = raster_stage)  
-      
-                  else:
-                      self.download_url = self.getCropRasterURL(cube_code,
-                                                   row['time_code'],
-                                                   row['raster_id'])
-              except:
-                  pass
+    
               
+                
     def Tiff_Edit_Save(self, cube_code,  multiplier, row, savefolder, resp):                  
       #check this works for seasonal and non seasonal
               try:   
-                  filename = '{0}{1}.tif'.format(row['raster_id'],row['time_code'])
+                  cube_dimensions = self.cubedict[cube_code]['cubedimensions']
+                  rasterID_index = (len(row) - 2)
+                  rasterID = row[rasterID_index]
+            
+                  time_code = ''
+                  if any('TIME' in d.values() for d in cube_dimensions):
+                      time_code_index = int(((len(row) - 2)/3))
+                      time_code = row[time_code_index]
+     
+                  filename = '{0}{1}.tif'.format(rasterID, time_code)
                   outfilename = os.path.join(savefolder,filename)       
-                  download_file = os.path.join(savefolder,'raw_{0}.tif'.format(row['raster_id']))
+                  download_file = os.path.join(savefolder,'raw_{0}.tif'.format(rasterID))
                   ndays = 1
-                  
                   #By defualt dekadal data from WaPOR is an average. This allows it to give the cumulative value.
-                  if self.cubedict[cube_code]['cubedimensions']['code']  == 'DEKAD' and self.Combo  == 'Cumulative' :
-                      timestr = row['time_code']
+                  if any(d['code'] == 'DEKAD' for d in self.cubedict[cube_code]['cubedimensions']) and self.Combo  == 'Cumulative' and self.workspaces == 'WAPOR_2':
+                      timestr = time_code
                       startdate = datetime.datetime.strptime(timestr[1:11],'%Y-%m-%d')
                       enddate = datetime.datetime.strptime(timestr[12:22],'%Y-%m-%d')
                       ndays = (enddate.timestamp()-startdate.timestamp())/86400
-                 
                   open(download_file,'wb').write(resp.content)
                   driver, NDV, xsize, ysize, GeoT, Projection = self.GetGeoInfo(download_file)
                   Array = self.OpenAsArray(download_file,nan_values = True)
-                  CorrectedArray = Array*multiplier*ndays
+                  correction = multiplier * ndays
                   
+                  if(self.workspaces == 'ASIS' and cube_code != 'PHE'):
+                      CorrectedArray = np.multiply(Array, correction, out = Array, where = Array < 251)
+                      #attempt at creat a general solution and not a hardcoded solution.
+                      # NDV_list = [NDV]
+                      # for value in self.cubedict[cube_code]['additionalInfo']['flags']:
+                      #     NDV_list.append(int(value['value']))
+                      #     print(NDV_list)
+                      # CorrectedArray = np.multiply(Array, correction, where = Array not in NDV_list)
+                  else:
+                      CorrectedArray = np.multiply(Array, correction, where = Array!=NDV)
+                      
                   self.CreateGeoTiff(outfilename,CorrectedArray,
                                     driver, NDV, xsize, ysize, GeoT, Projection)
-                  os.remove(download_file)
-                  
+
+                  os.remove(download_file)          
                   if self.CropChecked:
                       gdal.Warp(os.path.join(savefolder,('Clip' + filename)), outfilename,cutlineDSName = self.vector_location, cropToCutline = (True), warpOptions = [ 'CUTLINE_ALL_TOUCHED=TRUE' ])#
                       os.remove(outfilename)
                       os.rename(os.path.join(savefolder,('Clip' + filename)), outfilename)
-                  
               except:
                   pass
 
 
 
-    def getAvailData(self,cube_code,time_range,
-                     location = [],season = [],stage = []):
-        
+    def getAvailData(self,cube_code,time_range):
         try:
             measure_code = self.cubedict[cube_code]['cubemeasure']['code']
             dimensions = self.cubedict[cube_code]['cubedimensions']
         except:
             self.Mbox( 'Error' ,'Cannot get cube info',0)
            
-       
+        df_dims_ls = []
         dims_ls = []
         columns_codes = ['MEASURES']
         rows_codes = []
         try:
-            
-            if dimensions['type']  == 'TIME': #get time dims
-                time_dims_code = dimensions['code']
-                df_time = self._query_dimensionsMembers(cube_code,time_dims_code)
-                time_dims = {
-                    "code": time_dims_code,
-                    "range": '[{0})'.format(time_range)
-                    }
-                dims_ls.append(time_dims)
-                rows_codes.append(time_dims_code)
-            if dimensions['type']  == 'WHAT':
-                dims_code = dimensions['code']
-                print(dims_code)
-                df_dims = self._query_dimensionsMembers(cube_code,dims_code) 
-                members_ls = [row['code'] for i,row in df_dims.iterrows()]
-                if (dims_code  == 'COUNTRY' or dims_code  == 'BASIN'):
-                    if location:
-                        members_ls = location
-                if (dims_code  == 'SEASON'):
-                    if season:
-                        members_ls = season
-                if (dims_code  == 'STAGE'):
-                    if stage:
-                        members_ls = stage    
-                     
-                what_dims = {
-                        "code":dimensions['code'],
-                        "values":members_ls
+
+            for item in dimensions:
+                if item['type']  == 'TIME': #get time dims
+                    time_dims_code = item['code']
+                    df_time, avalible_data = self._query_dimensionsMembers(cube_code,time_dims_code)
+                    df_dims_ls = df_dims_ls + avalible_data
+                    time_dims = {
+                        "code": time_dims_code,
+                        "range": '[{0})'.format(time_range)
                         }
-                dims_ls.append(what_dims)
-                rows_codes.append(dimensions['code']) 
-                
+                    dims_ls.append(time_dims)
+                    rows_codes.append(time_dims_code)  
+                if item['type']  == 'WHAT':
+                    dims_code = item['code']
+                    df_dims , avalible_data = self._query_dimensionsMembers(cube_code,dims_code)
+                    df_dims_ls = df_dims_ls + avalible_data
+                    members_ls = df_dims['code'].tolist()
+                    what_dims = {
+                            "code":item['code'],
+                            "values":members_ls
+                            }
+                    dims_ls.append(what_dims)
+  
+                    rows_codes.append(item['code']) 
+
             df = self._query_availData(cube_code,measure_code,
                              dims_ls,columns_codes,rows_codes)
         except:
             self.Mbox( 'Error' ,'Failed request cannot get list of available data',0)
             return None
         
-        keys = rows_codes + ['raster_id','bbox','time_code']
+
+        keys = []
+        for item in rows_codes:
+            keys.append(item)
+            keys.append(item + '-code')
+            keys.append(item + '-description')
+       
+   
+        keys = keys + ['raster_id','bbox']
         df_dict = { i : [] for i in keys }
         for irow,row in df.iterrows():
-            for i in range(len(row)):
+            header_count = 0
+            cell_count = 0
+            for i in range(len(row)): 
+                if row[i] == None:
+                    break
                 if row[i]['type']  == 'ROW_HEADER':
                     key_info = row[i]['value']
-                    df_dict[keys[i]].append(key_info)
-                    if keys[i]  == time_dims_code:
-                        time_info = df_time.loc[df_time['caption'] == key_info].to_dict(orient = 'records')
-                        df_dict['time_code'].append(time_info[0]['code'])
+                    header_number = int(header_count * 3)
+                    df_dict[keys[header_number]].append(key_info)
+                    #df_dims_ls can get quite long
+                    #potentialy could be a quicker way to iterate through.
+                    for j in df_dims_ls:
+                        if j['caption'] ==  key_info:
+                            key= keys[header_number] + '-code'
+                            df_dict[key].append(j['code'])
+                            key= keys[header_number] + '-description'
+                            #Not all items have a description
+                            try:
+                                df_dict[key].append(j['description'])
+                            except:
+                                df_dict[key].append('NA')
+                            header_count += 1
+                            break
+
                 if row[i]['type']=='DATA_CELL':
-                    raster_info=row[i]['metadata']['raster']
-            df_dict['raster_id'].append(raster_info['id'])
-            df_dict['bbox'].append(raster_info['bbox'])
+                    if cell_count != 0:
+                        k=0
+                        while k < len(df_dict)-2:
+                            key = keys[k]
+                            df_dict[key].append(df_dict[key][-1])
+                            k += 1
+                        
+                    raster_info=row[i]['metadata']['raster']    
+                    df_dict['raster_id'].append(raster_info['id'])
+                    df_dict['bbox'].append(raster_info['bbox'])
+                    cell_count += 1
+
         df_sorted=pd.DataFrame.from_dict(df_dict)
         return df_sorted            
 
@@ -1429,19 +1534,18 @@ class WorkerThread(QThread):
             df = pd.DataFrame.from_dict(avail_items, orient = 'columns')
         except:
             self.Mbox( 'Error' ,'Cannot get dimensions Members.'+str(resp_vp['message']),0)
-        return df
+        return df , avail_items
 
 
     
     def _query_availData(self,cube_code,measure_code,
                          dims_ls,columns_codes,rows_codes):                
-
         query_load = {
           "type": "MDAQuery_Table",              
           "params": {
             "properties": {                     
               "metadata": True,                     
-              "paged": False,                   
+              "paged": False,                 
             },
             "cube": {                            
               "workspaceCode": self.workspaces,            
@@ -1456,18 +1560,35 @@ class WorkerThread(QThread):
             }
           }
         }
+
         resp = requests.post(self.path_query, json = query_load)
         resp_vp = resp.json()
         try:
             results = resp_vp['response']['items']
+            
+            #Some of the responces have duplicate items in them which need to be removed 
+            #the following section removes these duplicates.
+            #exception writen in for where the duplicates are intentional
+            if cube_code != 'EMS' and self.workspaces != 'GLEAM3':
+                for item in results:
+                    y = len(item)-1    
+                    while y > 0:
+                        if item[y] in item[:y]:
+                            item.remove(item[y])
+                            if y > len(item)-1:
+                                y -= 1
+                        else:
+                            y -= 1
+                            
             return pd.DataFrame(results)
+        
         except:
             self.Mbox( 'Error' ,'Cannot get list of available data.'+str(resp_vp['message']),0)
         
   
             
     def getCropRasterURL(self,cube_code,
-                          time_code,rasterId,season = None,stage = None):
+                          row):
         #Create Polygon        
         xmin,ymin,xmax,ymax = self.bbox[0], self.bbox[1], self.bbox[2], self.bbox[3]
         Polygon = [
@@ -1477,42 +1598,25 @@ class WorkerThread(QThread):
                   [xmax,ymin],
                   [xmin,ymin]
                 ]
-        
         cube_measure_code = self.cubedict[cube_code]['cubemeasure']['code']
-        cube_dimensions = self.cubedict[cube_code]['cubedimensions']
-        
         dimension_params = []
-        
-
-        if cube_dimensions['type']  == 'TIME':
-            cube_dimension_code = cube_dimensions['code']
+        rasterID_index = (len(row) - 2)
+        rasterID = row[rasterID_index]
+        x=0
+        while x < (len(row)-2):
+            i_code = int(x+1)                         
             dimension_params.append({
-            "code": cube_dimension_code,
-            "values": [
-            time_code
-            ]
+            "code": row.index[x],
+            "values": [row[i_code]]
             })
-        if cube_dimensions['code']  == 'SEASON':                
-            dimension_params.append({
-            "code": 'SEASON',
-            "values": [
-            season
-            ]
-            })
-        if cube_dimensions['code']  == 'STAGE':                
-            dimension_params.append({
-            "code": 'STAGE',
-            "values": [
-            stage
-            ]
-            })                
+            x += 3
  
         #Query payload
         query_crop_raster = {
           "type": "CropRaster",
           "params": {
             "properties": {
-              "outputFileName": "{0}.tif".format(rasterId),
+              "outputFileName": "{0}.tif".format(rasterID),
               "cutline": True,
               "tiled": True,
               "compressed": True,
@@ -1538,11 +1642,11 @@ class WorkerThread(QThread):
             }
           }
         }
+        
         self.CheckAccessToken()
         resp_vp = requests.post(self.path_query,
                               headers = {'Authorization':'Bearer {0}'.format(self.AccessToken)},
-                                                       json = query_crop_raster)
-        
+                                                        json = query_crop_raster)
         resp_vp = resp_vp.json()
         try:
             job_url = resp_vp['response']['links'][0]['href']
@@ -1569,7 +1673,7 @@ class WorkerThread(QThread):
                  results = resp['response']['output']
                  output = pd.DataFrame(results['items'], columns = results['header'])
              else:
-                 print('ERROR: Invalid jobType')                
+                 pass                
              return output
          if resp['response']['status']  == 'COMPLETED WITH ERRORS':
              contiue = False    
