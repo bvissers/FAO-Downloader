@@ -1,5 +1,0 @@
-<RCC>
-    <qresource prefix="/plugins/waport_data" >
-        <file>icon.png</file>
-    </qresource>
-</RCC>
