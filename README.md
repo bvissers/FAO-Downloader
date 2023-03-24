@@ -4,6 +4,8 @@ This QGIS plugin allows users to access data from the Food and Agriculture Organ
 
 This plugin was made by Brenden Vissers with assistance from Celray James Chawanda. Some Python code was adapted from the work done by Bich Tran on the "Water Productivity and Water Accounting using WaPOR” project (https://github.com/wateraccounting/WAPOROCW).
 
+For issues or bug reports please contact me at bvissers929@gmail.com.
+
 Future Development plans include:
 - Adding SWAT+ analysis tool.
 - Uploading to QGIS plugin repository.
