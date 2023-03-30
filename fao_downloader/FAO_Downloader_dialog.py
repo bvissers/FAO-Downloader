@@ -33,7 +33,7 @@ import qgis.core
 from qgis.PyQt import QtWidgets, uic
 import requests
 import time
-
+import webbrowser
 
 
 
@@ -60,6 +60,7 @@ class FAODownloaderDialog(QtWidgets.QDialog, FORM_CLASS):
         self.path_jobs=r'https://io.apps.fao.org/gismgr/api/v1/catalog/workspaces/WAPOR/jobs/'
         self.path_query=r'https://io.apps.fao.org/gismgr/api/v1/query/'
         self.path_sign_in=r'https://io.apps.fao.org/gismgr/api/v1/iam/sign-in/'
+        
         self.workspaces='WAPOR_2'
 
         self.token_is_valid = False
@@ -80,7 +81,7 @@ class FAODownloaderDialog(QtWidgets.QDialog, FORM_CLASS):
         self.btn_browse_default_download_dir.clicked.connect(self.browse_default_directory)
         self.btn_set_download_location.clicked.connect(self.browse_download_directory)
         self.btn_download.clicked.connect(self.LaunchDownload)
-
+        self.btn_get_token.clicked.connect(self.get_token)
         
         # set sizes of items
         self.btn_download.setFixedSize(141, 142)
@@ -93,14 +94,10 @@ class FAODownloaderDialog(QtWidgets.QDialog, FORM_CLASS):
         self.project = None
 
         
-    # to store swat constants
-    class swat_analysis_var_constants:
-        def __init__(self, variable, file_prefix, column_index):
-            self.variable = variable
-            self.file_prefix = file_prefix
-            self.column_index = column_index
+    def get_token(self):
+        webbrowser.open('https://wapor.apps.fao.org/my-wapor')
     
-
+    
     def initialise_defaults(self):
 
         self.pop_workspace()
@@ -144,6 +141,8 @@ class FAODownloaderDialog(QtWidgets.QDialog, FORM_CLASS):
        
         # load catalog to treewidgit
         self.load_catalog()
+        
+        self.mMapLayerComboBox.setFilters(qgis.core.QgsMapLayerProxyModel.PolygonLayer)
         
 
     def pop_workspace(self):

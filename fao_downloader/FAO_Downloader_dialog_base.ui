@@ -72,7 +72,7 @@
     <enum>QTabWidget::Rounded</enum>
    </property>
    <property name="currentIndex">
-    <number>0</number>
+    <number>1</number>
    </property>
    <property name="tabBarAutoHide">
     <bool>true</bool>
@@ -492,7 +492,7 @@
        <x>10</x>
        <y>10</y>
        <width>481</width>
-       <height>111</height>
+       <height>121</height>
       </rect>
      </property>
      <property name="title">
@@ -527,8 +527,8 @@
      <widget class="QPushButton" name="btn_update_token">
       <property name="geometry">
        <rect>
-        <x>384</x>
-        <y>62</y>
+        <x>380</x>
+        <y>70</y>
         <width>91</width>
         <height>31</height>
        </rect>
@@ -541,7 +541,7 @@
       <property name="geometry">
        <rect>
         <x>30</x>
-        <y>63</y>
+        <y>70</y>
         <width>341</width>
         <height>31</height>
        </rect>
@@ -550,22 +550,35 @@
      <widget class="QPushButton" name="btn_check_token">
       <property name="geometry">
        <rect>
-        <x>226</x>
-        <y>26</y>
+        <x>250</x>
+        <y>30</y>
         <width>71</width>
-        <height>23</height>
+        <height>21</height>
        </rect>
       </property>
       <property name="text">
        <string>Re-Check</string>
       </property>
      </widget>
+     <widget class="QPushButton" name="btn_get_token">
+      <property name="geometry">
+       <rect>
+        <x>380</x>
+        <y>30</y>
+        <width>91</width>
+        <height>23</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Get Token</string>
+      </property>
+     </widget>
     </widget>
     <widget class="QGroupBox" name="groupBox_2">
      <property name="geometry">
       <rect>
-       <x>9</x>
-       <y>149</y>
+       <x>10</x>
+       <y>170</y>
        <width>481</width>
        <height>141</height>
       </rect>
